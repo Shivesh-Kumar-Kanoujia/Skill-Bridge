@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #F4F1E8;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #ECE8DD;
+  --color-border-subtle: #E3E2D9;
+  --color-border-medium: #D0CFC5;
+  
+  --color-primary: #31594B;
+  --color-primary-hover: #27483C;
+  --color-primary-light: #447463;
+  --color-primary-faint: #EAF0E8;
+
+  --color-secondary: #D8E3D0;
+  --color-secondary-hover: #CAD8C1;
+  --color-secondary-light: #F0F5EC;
+
+  --color-sage-muted: #A7C4A0;
+  --color-sage-border: #C8D9C2;
+
+  --color-accent: #D99A62;
+  --color-accent-hover: #C58850;
+  --color-accent-light: #FBF4EC;
+
+  --color-text-primary: #292F2B;
+  --color-text-secondary: #68716B;
+  --color-text-muted: #8E9690;
+
+  --color-success: #356B4B;
+  --color-error: #B5473C;
+}
+
+:root {
+  --background: #F4F1E8;
+  --foreground: #292F2B;
+  --surface: #FFFFFF;
+  --primary: #31594B;
+  --primary-hover: #27483C;
+  --secondary: #D8E3D0;
+  --secondary-hover: #CAD8C1;
+  --muted-sage: #A7C4A0;
+  --border: #E3E2D9;
+  --accent: #D99A62;
+  --success: #356B4B;
+  --error: #B5473C;
+  --text-primary: #292F2B;
+  --text-secondary: #68716B;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: #D8E3D0;
+  color: #31594B;
+}
+
+/* ==========================================================================
+   Selective Claymorphism Styles
+   Soft, restrained tactile depth with natural dual shadows
+   ========================================================================== */
+
+.clay-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E3E2D9;
+  border-radius: 0.875rem;
+  box-shadow: 
+    0 4px 16px -2px rgba(49, 89, 75, 0.05),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 2px 0 rgba(49, 89, 75, 0.03);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+}
+
+.clay-card:hover {
+  border-color: #CAD8C1;
+  box-shadow: 
+    0 8px 24px -4px rgba(49, 89, 75, 0.09),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 2px 0 rgba(49, 89, 75, 0.04);
+}
+
+.clay-card-featured {
+  background: linear-gradient(180deg, #FFFFFF 0%, #FAFAF7 100%);
+  border: 1px solid #CAD8C1;
+  border-radius: 1rem;
+  box-shadow: 
+    0 6px 20px -3px rgba(49, 89, 75, 0.08),
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -2px 3px 0 rgba(49, 89, 75, 0.04);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clay-btn-primary {
+  background-color: #31594B;
+  color: #FFFFFF;
+  border-radius: 0.625rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 3px 10px -1px rgba(49, 89, 75, 0.28),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -2px 0 0 rgba(21, 42, 35, 0.45);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clay-btn-primary:hover {
+  background-color: #27483C;
+  transform: translateY(-1px);
+  box-shadow: 
+    0 5px 14px -1px rgba(49, 89, 75, 0.34),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -2px 0 0 rgba(21, 42, 35, 0.55);
+}
+
+.clay-btn-primary:active {
+  transform: translateY(1px);
+  box-shadow: 
+    0 2px 5px 0 rgba(49, 89, 75, 0.25),
+    inset 0 2px 3px 0 rgba(21, 42, 35, 0.5);
+}
+
+.clay-btn-secondary {
+  background-color: #D8E3D0;
+  color: #31594B;
+  border-radius: 0.625rem;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    0 2px 6px 0 rgba(49, 89, 75, 0.07),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1.5px 0 0 rgba(49, 89, 75, 0.08);
+  font-weight: 600;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clay-btn-secondary:hover {
+  background-color: #CAD8C1;
+  transform: translateY(-1px);
+  box-shadow: 
+    0 4px 10px 0 rgba(49, 89, 75, 0.1),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1.5px 0 0 rgba(49, 89, 75, 0.12);
+}
+
+.clay-btn-secondary:active {
+  transform: translateY(1px);
+  box-shadow: 
+    0 1px 3px 0 rgba(49, 89, 75, 0.08),
+    inset 0 1.5px 2px 0 rgba(49, 89, 75, 0.15);
+}
+
+.clay-widget {
+  background-color: #FFFFFF;
+  border: 1px solid #E3E2D9;
+  border-radius: 0.875rem;
+  box-shadow: 
+    0 3px 12px -2px rgba(49, 89, 75, 0.05),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.85);
+  transition: all 0.2s ease;
+}
+
+.clay-pill-active {
+  background-color: #31594B;
+  color: #FFFFFF;
+  box-shadow: 
+    0 2px 6px -1px rgba(49, 89, 75, 0.25),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.clay-tag-sage {
+  background-color: #D8E3D0;
+  color: #31594B;
+  border: 1px solid rgba(167, 196, 160, 0.5);
+  box-shadow: inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
