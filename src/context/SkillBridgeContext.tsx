@@ -33,6 +33,7 @@ interface SkillBridgeContextType {
   signup: (data: { name: string; email: string; department: string; semester: number }) => Promise<{ success: boolean }>;
   logout: () => void;
   updateProfile: (updated: Partial<Student>) => void;
+  uploadAvatar: (file: File) => Promise<{ success: boolean; avatarUrl?: string; error?: string }>;
   applyToProject: (projectId: string, roleTitle: string, statement: string) => { success: boolean; message: string };
   withdrawApplication: (applicationId: string) => void;
   acceptApplication: (applicationId: string) => void;
@@ -227,6 +228,45 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
       });
       setStudents(prev => prev.map(s => s.id === currentUser.id ? { ...s, ...updated } : s));
       showNotification('Profile Updated', 'Your profile details and skills have been saved.');
+    }
+  };
+
+  const uploadAvatar = async (file: File): Promise<{ success: boolean; avatarUrl?: string; error?: string }> => {
+    try {
+      const res = await studentsApi.uploadAvatar(file);
+      let newAvatarUrl = res.avatar_url;
+      if (newAvatarUrl && newAvatarUrl.startsWith('/uploads/')) {
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        newAvatarUrl = `${apiBase}${newAvatarUrl}`;
+      }
+      if (!newAvatarUrl) {
+        newAvatarUrl = URL.createObjectURL(file);
+      }
+
+      setCurrentUser(prev => {
+        const updated = { ...prev, avatar: newAvatarUrl };
+        try {
+          localStorage.setItem('sb_current_user', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+
+      setStudents(prev => prev.map(s => s.id === currentUser.id ? { ...s, avatar: newAvatarUrl } : s));
+      showNotification('Photo Updated', 'Your profile photo has been uploaded successfully.');
+      return { success: true, avatarUrl: newAvatarUrl };
+    } catch {
+      // Local preview fallback if backend is offline
+      const localUrl = URL.createObjectURL(file);
+      setCurrentUser(prev => {
+        const updated = { ...prev, avatar: localUrl };
+        try {
+          localStorage.setItem('sb_current_user', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+      setStudents(prev => prev.map(s => s.id === currentUser.id ? { ...s, avatar: localUrl } : s));
+      showNotification('Photo Updated', 'Profile photo updated locally.');
+      return { success: true, avatarUrl: localUrl };
     }
   };
 
@@ -479,6 +519,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
         signup,
         logout,
         updateProfile,
+        uploadAvatar,
         applyToProject,
         withdrawApplication,
         acceptApplication,

@@ -23,6 +23,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { getAvatarUrl } from '@/lib/utils';
 
 function ProjectDetailContent() {
   const params = useParams();
@@ -94,7 +95,7 @@ function ProjectDetailContent() {
             {/* Coordinator Info */}
             <div className="mt-6 flex items-center gap-3.5 pt-6 border-t border-[#ECE8DD]">
               <img
-                src={project.ownerAvatar}
+                src={getAvatarUrl(project.ownerAvatar, project.ownerName)}
                 alt={project.ownerName}
                 className="w-11 h-11 rounded-full object-cover border-2 border-[#D8E3D0] shadow-2xs"
               />
@@ -288,7 +289,7 @@ function ProjectDetailContent() {
               {project.currentMembers.map((member) => (
                 <div key={member.studentId} className="flex items-center gap-3">
                   <img
-                    src={member.avatar}
+                    src={getAvatarUrl(member.avatar, member.name)}
                     alt={member.name}
                     className="w-9 h-9 rounded-full object-cover border border-[#D8E3D0] shadow-2xs"
                   />

@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.security import (
     create_access_token,
     get_current_user_full,
+    get_current_user_optional,
     hash_password,
     verify_password,
 )
@@ -113,7 +114,8 @@ async def get_current_user_info(
 
 
 @router.post("/logout", response_model=MessageResponse)
-async def logout(user_id: int = Depends(get_current_user_full)):
+async def logout(user_id: Optional[int] = Depends(get_current_user_optional)):
     """Logout — JWT is stateless so the client simply discards the token."""
-    logger.info("Logout: user_id=%d", user_id)
+    if user_id:
+        logger.info("Logout: user_id=%d", user_id)
     return MessageResponse(message="Logged out successfully.")

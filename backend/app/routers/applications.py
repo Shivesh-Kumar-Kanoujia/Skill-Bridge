@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import urllib.parse
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -51,14 +52,20 @@ async def _application_to_out(app: Application, db: AsyncSession) -> Application
 
     match_reasons = json.loads(app.match_reasons) if app.match_reasons else []
 
+    app_name = profile.name if profile else "Applicant"
+    if profile and profile.avatar_url and profile.avatar_url.strip():
+        app_avatar = profile.avatar_url
+    else:
+        app_avatar = f"https://ui-avatars.com/api/?name={urllib.parse.quote_plus(app_name)}&background=31594B&color=fff&bold=true"
+
     return ApplicationOut(
         id=f"app-{app.id}",
         projectId=f"proj-{app.project_id}",
         projectTitle=project.title if project else "Unknown",
         projectCategory=project.category if project else "",
         applicantId=f"student-{app.applicant_id}",
-        applicantName=profile.name if profile else "Unknown",
-        applicantAvatar=profile.avatar_url or "" if profile else "",
+        applicantName=app_name,
+        applicantAvatar=app_avatar,
         applicantDepartment=profile.department if profile else "",
         applicantSemester=profile.semester if profile else 1,
         applicantSkills=[ss.skill.name for ss in profile.student_skills] if profile else [],

@@ -345,3 +345,9 @@ class MatchScoreOut(BaseModel):
 class MessageResponse(BaseModel):
     message: str
     success: bool = True
+
+
+class AvatarUploadResponse(BaseModel):
+    message: str = "Avatar uploaded successfully."
+    avatar_url: str
+    success: bool = True

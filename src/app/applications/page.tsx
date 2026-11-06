@@ -16,6 +16,7 @@ import {
   Users
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { getAvatarUrl } from '@/lib/utils';
 
 export default function ApplicationsPage() {
   const { 
@@ -167,7 +168,7 @@ export default function ApplicationsPage() {
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                       <div className="flex items-start gap-4">
                         <img
-                          src={app.applicantAvatar}
+                          src={getAvatarUrl(app.applicantAvatar, app.applicantName)}
                           alt={app.applicantName}
                           className="w-12 h-12 rounded-full object-cover border-2 border-[#D8E3D0] shadow-2xs"
                         />
@@ -471,7 +472,7 @@ export default function ApplicationsPage() {
                             className="p-3.5 rounded-xl border border-[#E3E2D9] bg-[#FAF8F5] flex items-center gap-3 shadow-2xs"
                           >
                             <img
-                              src={member.avatar}
+                              src={getAvatarUrl(member.avatar, member.name)}
                               alt={member.name}
                               className="w-10 h-10 rounded-full object-cover border border-[#D8E3D0] shadow-2xs"
                             />

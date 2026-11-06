@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import urllib.parse
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
@@ -16,6 +17,7 @@ from app.core.security import get_current_user_full
 from app.models import StudentProfile, Skill, StudentSkill, User, TeamMember, Application
 from app.schemas import (
     AvailabilityOut,
+    AvatarUploadResponse,
     MessageResponse,
     ProfileUpdateRequest,
     SkillBase,
@@ -40,10 +42,15 @@ def _profile_to_student_out(profile: StudentProfile, user: User) -> StudentOut:
     interests = json.loads(profile.interests) if profile.interests else []
     preferred_roles = json.loads(profile.preferred_roles) if profile.preferred_roles else []
 
+    avatar = profile.avatar_url
+    if not avatar or not avatar.strip():
+        encoded_name = urllib.parse.quote_plus(profile.name or "Student")
+        avatar = f"https://ui-avatars.com/api/?name={encoded_name}&background=31594B&color=fff&bold=true"
+
     return StudentOut(
         id=f"student-{user.id}",
         name=profile.name,
-        avatar=profile.avatar_url or "",
+        avatar=avatar,
         email=user.email,
         department=profile.department,
         semester=profile.semester,
@@ -224,7 +231,7 @@ async def update_my_profile(
     return _profile_to_student_out(profile, user)
 
 
-@router.post("/me/avatar", response_model=MessageResponse)
+@router.post("/me/avatar", response_model=AvatarUploadResponse)
 async def upload_avatar(
     file: UploadFile = File(...),
     user_id: int = Depends(get_current_user_full),
@@ -244,4 +251,4 @@ async def upload_avatar(
     await db.commit()
 
     logger.info("Avatar updated: user_id=%d url=%s", user_id, url)
-    return MessageResponse(message="Avatar uploaded successfully.")
+    return AvatarUploadResponse(message="Avatar uploaded successfully.", avatar_url=url)

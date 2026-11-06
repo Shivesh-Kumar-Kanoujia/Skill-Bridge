@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSkillBridge } from '@/context/SkillBridgeContext';
 import { Button } from '@/components/ui/Button';
 import { PillNav, PillNavItem } from '@/components/ui/PillNav';
+import { getAvatarUrl } from '@/lib/utils';
 import { 
   Compass, 
   Users, 
@@ -19,6 +20,11 @@ export function Navbar() {
   const pathname = usePathname();
   const { currentUser, isAuthenticated, logout, applications } = useSkillBridge();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const pendingAppsCount = applications.filter(
     a => (a.applicantId === currentUser.id && a.status === 'Pending') ||
@@ -47,7 +53,7 @@ export function Navbar() {
           label: 'Applications', 
           href: '/applications', 
           icon: <FileText className="w-4 h-4" />,
-          badge: pendingAppsCount > 0 ? pendingAppsCount : undefined
+          badge: mounted && pendingAppsCount > 0 ? pendingAppsCount : undefined
         },
         { 
           label: 'My Profile', 
@@ -73,7 +79,7 @@ export function Navbar() {
     <div className="flex items-center justify-between p-2.5 bg-[#F4F1E8] rounded-xl border border-[#E3E2D9]">
       <Link href="/profile" className="flex items-center gap-2.5 min-w-0">
         <img
-          src={currentUser.avatar}
+          src={getAvatarUrl(currentUser.avatar, currentUser.name)}
           alt={currentUser.name}
           className="w-8 h-8 rounded-full object-cover border border-[#D8E3D0] shrink-0"
         />
@@ -157,7 +163,7 @@ export function Navbar() {
                     title="View My Profile"
                   >
                     <img
-                      src={currentUser.avatar}
+                      src={getAvatarUrl(currentUser.avatar, currentUser.name)}
                       alt={currentUser.name}
                       className="w-7 h-7 rounded-full object-cover border border-[#D8E3D0]"
                     />

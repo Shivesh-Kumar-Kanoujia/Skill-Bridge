@@ -10,6 +10,7 @@ import { useSkillBridge } from '@/context/SkillBridgeContext';
 import { calculateStudentToStudentMatch } from '@/lib/matching';
 import { Star, MailPlus } from 'lucide-react';
 import { motion } from 'motion/react';
+import { getAvatarUrl } from '@/lib/utils';
 
 interface StudentCardProps {
   student: Student;
@@ -32,7 +33,7 @@ export function StudentCard({ student, onInviteClick }: StudentCardProps) {
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
             <img
-              src={student.avatar}
+              src={getAvatarUrl(student.avatar, student.name)}
               alt={student.name}
               className="w-12 h-12 rounded-full object-cover border-2 border-[#D8E3D0] shadow-2xs"
             />

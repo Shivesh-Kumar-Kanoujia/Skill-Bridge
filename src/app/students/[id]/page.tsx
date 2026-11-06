@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { GithubIcon, LinkedinIcon } from '@/components/ui/Icons';
 import { motion } from 'motion/react';
+import { getAvatarUrl } from '@/lib/utils';
 
 function StudentDetailContent() {
   const params = useParams();
@@ -69,7 +70,7 @@ function StudentDetailContent() {
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
           <div className="flex items-start gap-5">
             <img
-              src={student.avatar}
+              src={getAvatarUrl(student.avatar, student.name)}
               alt={student.name}
               className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-[#D8E3D0] shrink-0 shadow-2xs"
             />

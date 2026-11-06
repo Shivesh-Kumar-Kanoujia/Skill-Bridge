@@ -12,6 +12,7 @@ import {
   UserCircle, 
   ShieldCheck
 } from 'lucide-react';
+import { getAvatarUrl } from '@/lib/utils';
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -42,7 +43,7 @@ export function AppSidebar() {
       <div className="p-4 rounded-xl clay-widget">
         <div className="flex items-center gap-3">
           <img
-            src={currentUser.avatar}
+            src={getAvatarUrl(currentUser.avatar, currentUser.name)}
             alt={currentUser.name}
             className="w-10 h-10 rounded-full object-cover border-2 border-[#D8E3D0] shadow-2xs"
           />

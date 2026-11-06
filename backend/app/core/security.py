@@ -15,6 +15,7 @@ from sqlalchemy import select
 from app.core.config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -87,3 +88,17 @@ async def get_current_user_full(
             detail="Invalid authentication token.",
         )
     return int(user_id)
+
+
+async def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme_optional),
+) -> Optional[int]:
+    """Dependency that returns the user ID from JWT if present, or None without raising 401."""
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        user_id = payload.get("sub")
+        return int(user_id) if user_id is not None else None
+    except Exception:
+        return None

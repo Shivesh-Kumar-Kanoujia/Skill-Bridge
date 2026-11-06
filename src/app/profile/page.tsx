@@ -14,13 +14,18 @@ import {
   Trash2, 
   Globe, 
   Save, 
-  X
+  X,
+  Camera,
+  Loader2
 } from 'lucide-react';
 import { GithubIcon, LinkedinIcon } from '@/components/ui/Icons';
+import { getAvatarUrl } from '@/lib/utils';
 import { motion } from 'motion/react';
 
 export default function ProfilePage() {
-  const { currentUser, updateProfile } = useSkillBridge();
+  const { currentUser, updateProfile, uploadAvatar } = useSkillBridge();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -86,6 +91,29 @@ export default function ProfilePage() {
     setSkills(currentUser.skills);
     setInterests(currentUser.interests);
     setIsEditing(false);
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, or WebP).');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image file is too large. Maximum size is 5MB.');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      await uploadAvatar(file);
+    } finally {
+      setIsUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const addSkill = () => {
@@ -167,11 +195,34 @@ export default function ProfilePage() {
             className="clay-card p-6 sm:p-8"
           >
             <div className="flex flex-col sm:flex-row sm:items-start gap-6">
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                className="w-20 h-20 rounded-full object-cover border-4 border-[#D8E3D0] shrink-0 shadow-2xs"
-              />
+              <div className="relative group shrink-0">
+                <img
+                  src={getAvatarUrl(currentUser.avatar, currentUser.name)}
+                  alt={currentUser.name}
+                  className="w-20 h-20 rounded-full object-cover border-4 border-[#D8E3D0] shadow-2xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingPhoto}
+                  className="absolute bottom-0 right-0 p-1.5 rounded-full bg-[#31594B] text-white hover:bg-[#234237] transition-all shadow-md cursor-pointer border-2 border-white"
+                  title="Upload profile photo"
+                  aria-label="Upload profile photo"
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+              </div>
 
               <div className="flex-1 flex flex-col gap-4">
                 {isEditing ? (

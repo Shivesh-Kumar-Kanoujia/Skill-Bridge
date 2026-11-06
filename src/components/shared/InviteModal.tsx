@@ -6,6 +6,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { useSkillBridge } from '@/context/SkillBridgeContext';
 import { AlertCircle, MailPlus } from 'lucide-react';
+import { getAvatarUrl } from '@/lib/utils';
 
 interface InviteModalProps {
   student: Student | null;
@@ -69,7 +70,7 @@ export function InviteModal({ student, isOpen, onClose }: InviteModalProps) {
         {/* Recipient summary */}
         <div className="flex items-center gap-3 p-3.5 rounded-xl bg-[#F4F1E8] border border-[#E3E2D9]">
           <img
-            src={student.avatar}
+            src={getAvatarUrl(student.avatar, student.name)}
             alt={student.name}
             className="w-10 h-10 rounded-full object-cover border border-[#D8E3D0] shadow-2xs"
           />

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import urllib.parse
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -47,8 +48,11 @@ async def _project_to_out(project: Project, db: AsyncSession) -> ProjectOut:
     )
     owner_profile = owner_result.scalar_one_or_none()
 
-    owner_name = owner_profile.name if owner_profile else "Unknown"
-    owner_avatar = owner_profile.avatar_url or "" if owner_profile else ""
+    owner_name = owner_profile.name if owner_profile else "Project Lead"
+    if owner_profile and owner_profile.avatar_url and owner_profile.avatar_url.strip():
+        owner_avatar = owner_profile.avatar_url
+    else:
+        owner_avatar = f"https://ui-avatars.com/api/?name={urllib.parse.quote_plus(owner_name)}&background=31594B&color=fff&bold=true"
     owner_dept = owner_profile.department if owner_profile else ""
 
     # Get required skills
@@ -61,12 +65,18 @@ async def _project_to_out(project: Project, db: AsyncSession) -> ProjectOut:
             select(StudentProfile).where(StudentProfile.user_id == tm.user_id)
         )
         mp = member_profile_result.scalar_one_or_none()
+        m_name = mp.name if mp else "Team Member"
+        if mp and mp.avatar_url and mp.avatar_url.strip():
+            m_avatar = mp.avatar_url
+        else:
+            m_avatar = f"https://ui-avatars.com/api/?name={urllib.parse.quote_plus(m_name)}&background=31594B&color=fff&bold=true"
+
         members.append(
             TeamMemberOut(
                 studentId=f"student-{tm.user_id}",
-                name=mp.name if mp else "Unknown",
+                name=m_name,
                 role=tm.role,
-                avatar=mp.avatar_url or "" if mp else "",
+                avatar=m_avatar,
                 department=mp.department if mp else "",
                 isOwner=tm.is_owner,
             )

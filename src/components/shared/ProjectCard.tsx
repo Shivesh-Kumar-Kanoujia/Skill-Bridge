@@ -10,6 +10,7 @@ import { useSkillBridge } from '@/context/SkillBridgeContext';
 import { calculateMatchScore } from '@/lib/matching';
 import { Users, Clock, Calendar, ArrowUpRight } from 'lucide-react';
 import { motion } from 'motion/react';
+import { getAvatarUrl } from '@/lib/utils';
 
 interface ProjectCardProps {
   project: Project;
@@ -96,7 +97,7 @@ export function ProjectCard({ project, onApplyClick }: ProjectCardProps) {
       <div className="mt-5 pt-4 border-t border-[#E3E2D9] flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <img
-            src={project.ownerAvatar}
+            src={getAvatarUrl(project.ownerAvatar, project.ownerName)}
             alt={project.ownerName}
             className="w-7 h-7 rounded-full object-cover border border-[#D8E3D0] shadow-2xs"
           />
