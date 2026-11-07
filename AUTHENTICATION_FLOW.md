@@ -170,3 +170,4 @@ export function useProtectedRoute() {
 | `POST /api/applications` | Authenticated | Blocks owner from applying to own project |
 | `POST /api/applications/{id}/action` | Project Owner | Validates `project.owner_id == user_id` |
 | `POST /api/applications/{id}/withdraw` | Applicant | Validates `application.applicant_id == user_id` |
+

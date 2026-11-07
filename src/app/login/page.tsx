@@ -6,17 +6,26 @@ import { useRouter } from 'next/navigation';
 import { useSkillBridge } from '@/context/SkillBridgeContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, KeyRound } from 'lucide-react';
+import { Dialog } from '@/components/ui/Dialog';
+import { Eye, EyeOff, Lock, Mail, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated } = useSkillBridge();
+  const { login, isAuthenticated, resetPassword } = useSkillBridge();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Password reset modal state
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [forgotMsg, setForgotMsg] = useState('');
+  const [forgotError, setForgotError] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   React.useEffect(() => {
     if (isAuthenticated) {
@@ -28,7 +37,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    if (!email) {
+    if (!email.trim()) {
       setError('Please enter your university email address.');
       return;
     }
@@ -38,20 +47,45 @@ export default function LoginPage() {
     }
 
     setIsLoading(true);
-    const result = await login(email, password);
+    const result = await login(email.trim(), password);
     setIsLoading(false);
 
     if (result.success) {
-      router.push('/dashboard');
+      window.location.href = '/dashboard';
     } else {
       setError(result.error || 'Authentication failed. Please verify credentials.');
     }
   };
 
-  const handleDemoFill = () => {
-    setEmail('aarav.sharma@apex.edu');
-    setPassword('password123');
-    setError('');
+  const handleResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotMsg('');
+
+    if (!forgotEmail.trim() || !newPassword) {
+      setForgotError('Please provide both your registered email and new password.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setForgotError('Password must contain at least 6 characters.');
+      return;
+    }
+
+    setIsResetting(true);
+    const res = await resetPassword(forgotEmail.trim(), newPassword);
+    setIsResetting(false);
+
+    if (res.success) {
+      setForgotMsg(res.message || 'Password updated! You can now sign in.');
+      setEmail(forgotEmail.trim());
+      setPassword(newPassword);
+      setTimeout(() => {
+        setShowForgotModal(false);
+        setForgotMsg('');
+      }, 1500);
+    } else {
+      setForgotError(res.error || 'Password reset failed.');
+    }
   };
 
   return (
@@ -97,9 +131,16 @@ export default function LoginPage() {
                 <label className="text-xs font-semibold text-[#292F2B] uppercase tracking-wider">
                   Password
                 </label>
-                <span className="text-[11px] text-[#8E9690] hover:text-[#31594B] cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotEmail(email);
+                    setShowForgotModal(true);
+                  }}
+                  className="text-[11px] text-[#8E9690] hover:text-[#31594B] cursor-pointer transition-colors"
+                >
                   Forgot password?
-                </span>
+                </button>
               </div>
               <div className="relative">
                 <input
@@ -142,21 +183,6 @@ export default function LoginPage() {
               Sign In
             </Button>
           </form>
-
-          {/* Demo account quick login helper */}
-          <div className="mt-5 pt-4 border-t border-[#ECE8DD] bg-[#FAF8F5] -mx-6 -mb-6 sm:-mx-8 sm:-mb-8 p-4 rounded-b-2xl flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 text-[#68716B]">
-              <KeyRound className="w-4 h-4 text-[#31594B]" />
-              <span>Demo: Aarav Sharma</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleDemoFill}
-              className="text-[#31594B] font-semibold hover:underline text-xs cursor-pointer"
-            >
-              Autofill Demo
-            </button>
-          </div>
         </div>
 
         {/* Footnote */}
@@ -167,6 +193,72 @@ export default function LoginPage() {
           </Link>
         </p>
       </motion.div>
+
+      {/* Forgot / Reset Password Dialog */}
+      <Dialog
+        isOpen={showForgotModal}
+        onClose={() => {
+          setShowForgotModal(false);
+          setForgotError('');
+          setForgotMsg('');
+        }}
+        title="Reset Account Password"
+        description="Enter your registered academic email and choose a new password."
+      >
+        <form onSubmit={handleResetSubmit} className="flex flex-col gap-4 pt-2">
+          <Input
+            label="Registered Email"
+            type="email"
+            value={forgotEmail}
+            onChange={(e) => setForgotEmail(e.target.value)}
+            placeholder="student.name@apex.edu"
+            leftIcon={<Mail className="w-4 h-4" />}
+            required
+          />
+
+          <Input
+            label="New Password"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Minimum 6 characters"
+            leftIcon={<Lock className="w-4 h-4" />}
+            helperText="Must be at least 6 characters long."
+            required
+          />
+
+          {forgotError && (
+            <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-[#B5473C]">
+              {forgotError}
+            </div>
+          )}
+
+          {forgotMsg && (
+            <div className="p-2.5 rounded-xl bg-green-50 border border-green-200 text-xs text-[#31594B] font-medium">
+              {forgotMsg}
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowForgotModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              isLoading={isResetting}
+            >
+              Update Password
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }

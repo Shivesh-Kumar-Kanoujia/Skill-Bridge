@@ -8,12 +8,13 @@
 ## 1. Completed Work Summary
 
 1. **Authentication Fix (Master Issue Resolved):**
-   - Investigated and pinpointed why Sign In was failing: demo autofill password was `'SkillBridge2026!'` while seed data had `'password123'`.
-   - Fixed signup flow where custom passwords entered by users were being omitted from API requests.
-   - Fixed client-side initial authentication state (`isAuthenticated` default changed from `true` to `false`).
-   - Implemented `isAuthReady` gate preventing premature redirection during session hydration.
-   - Built and integrated `useProtectedRoute()` hook across `/dashboard`, `/profile`, and `/applications`.
-   - Prevented authenticated users from redundantly visiting `/login` and `/signup` (auto-redirect to `/dashboard`).
+   - Cleaned up login form: removed "Autofill Demo" and "Demo: Aarav Sharma" labels as requested.
+   - Added self-service "Forgot password?" modal on the login page backed by `POST /api/auth/reset-password`.
+   - Enabled flexible password acceptance for demo/seed accounts: accepts both `password123` and `SkillBridge2026!` and automatically migrates the hash.
+   - Fixed email matching to be case-insensitive with whitespace trimming across signup, login, and password reset.
+   - Fixed offline/fallback authentication to persist `sb_token` and `sb_current_user` in localStorage so unauthenticated bounce-backs are prevented.
+   - Removed evaluation toggle ("New Student" vs "Active Student") on the dashboard.
+   - Enforced `useProtectedRoute()` session guard across `/dashboard`, `/profile`, and `/applications`.
 
 2. **Backend Modernization & Stabilization:**
    - Refactored `backend/app/main.py` from deprecated `@app.on_event("startup")` to the modern FastAPI `@asynccontextmanager async def lifespan(app: FastAPI)` pattern.
@@ -68,3 +69,4 @@
 
 - **Cloud Provisioning:** Azure SQL Database and Azure Blob Storage accounts are created. Live cloud connection in production requires whitelisting the client/server IP in Azure Portal.
 - **Metabase UI Setup:** SQL views are created and tested; user can connect their Metabase dashboard container to the database views.
+

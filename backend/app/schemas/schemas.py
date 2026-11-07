@@ -36,6 +36,16 @@ class LoginRequest(BaseModel):
         return v.lower().strip()
 
 
+class ResetPasswordRequest(BaseModel):
+    email: str
+    new_password: str = Field(..., min_length=6)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        return v.lower().strip()
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

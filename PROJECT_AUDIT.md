@@ -95,3 +95,4 @@ The primary blocker identified by the user—**"SIGN IN IS NOT WORKING"**—was 
 - **Authorization:** Server-side dependency `get_current_user_full` validates token on every state-mutating request. Ownership verified on project edits and application acceptance.
 - **CORS:** Restricted to `http://localhost:3000` and `http://127.0.0.1:3000` in dev.
 - **Secrets Management:** Credentials read from environment variables; `.env` excluded via `.gitignore`.
+

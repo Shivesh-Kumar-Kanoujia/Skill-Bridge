@@ -32,7 +32,9 @@ interface SkillBridgeContextType {
   dismissNotification: (id: string) => void;
   showNotification: (title: string, message: string, type?: ToastNotification['type']) => void;
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (data: { name: string; email: string; password: string; department: string; semester: number }) => Promise<{ success: boolean; error?: string }>;  logout: () => void;
+  signup: (data: { name: string; email: string; password: string; department: string; semester: number }) => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
+  resetPassword: (email: string, newPass: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   updateProfile: (updated: Partial<Student>) => void;
   uploadAvatar: (file: File) => Promise<{ success: boolean; avatarUrl?: string; error?: string }>;
   applyToProject: (projectId: string, roleTitle: string, statement: string) => { success: boolean; message: string };
@@ -129,8 +131,9 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
   };
 
   const login = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = email.trim();
     try {
-      await authApi.login(email, pass);
+      await authApi.login(cleanEmail, pass);
       const myProfile = await studentsApi.getMyProfile();
       setCurrentUser(myProfile);
       setIsAuthenticated(true);
@@ -152,19 +155,40 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     } catch (err: any) {
       // Offline / fallback mode
       if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError') || err.message?.includes('404')) {
-        await new Promise(res => setTimeout(res, 400));
-        if (!email.includes('@')) {
+        await new Promise(res => setTimeout(res, 300));
+        if (!cleanEmail.includes('@')) {
           return { success: false, error: 'Please enter a valid academic email address.' };
         }
         if (pass.length < 6) {
           return { success: false, error: 'Password must be at least 6 characters long.' };
         }
+        const matched = students.find(s => s.email.toLowerCase() === cleanEmail.toLowerCase()) || {
+          ...currentUser,
+          id: `student-${Date.now()}`,
+          name: cleanEmail.split('@')[0].replace('.', ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase()),
+          email: cleanEmail,
+        };
+        setCurrentUser(matched);
         setIsAuthenticated(true);
-        localStorage.setItem('sb_auth', 'true');
-        showNotification('Welcome back!', `Signed in as ${currentUser.name}`);
+        try {
+          localStorage.setItem('sb_token', `offline-token-${Date.now()}`);
+          localStorage.setItem('sb_current_user', JSON.stringify(matched));
+          localStorage.setItem('sb_auth', 'true');
+        } catch {}
+        showNotification('Welcome back!', `Signed in as ${matched.name}`);
         return { success: true };
       }
       return { success: false, error: err.message || 'Login failed.' };
+    }
+  };
+
+  const resetPassword = async (email: string, newPass: string): Promise<{ success: boolean; message?: string; error?: string }> => {
+    try {
+      const res = await authApi.resetPassword(email.trim(), newPass);
+      showNotification('Password Reset', res.message || 'Password updated successfully. You can now sign in.');
+      return { success: true, message: res.message };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Password reset failed.' };
     }
   };
 
@@ -533,6 +557,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
         login,
         signup,
         logout,
+        resetPassword,
         updateProfile,
         uploadAvatar,
         applyToProject,

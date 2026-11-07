@@ -127,3 +127,4 @@ Platform: Next.js 16.4.2 (Turbopack)
    - Storage service was verified in local fallback mode (`backend/uploads/`) and confirmed to integrate with the Azure Blob SDK when `AZURE_STORAGE_CONNECTION_STRING` is set.
 3. **Metabase Analytics:**
    - Metabase dashboard requires connecting an active Metabase instance to the Azure SQL Database and pointing to the created views (`vw_project_analytics`, `vw_application_analytics`, `vw_popular_skills`).
+

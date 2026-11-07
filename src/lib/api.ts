@@ -92,6 +92,13 @@ export const authApi = {
   async getMe() {
     return request<{ id: number; email: string; role: string }>('/api/auth/me');
   },
+
+  async resetPassword(email: string, newPassword: string) {
+    return request<{ message: string }>('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ email, new_password: newPassword }),
+    });
+  },
 };
 
 // ── Students API ──

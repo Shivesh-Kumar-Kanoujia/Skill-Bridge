@@ -106,3 +106,4 @@ def run_all():
 if __name__ == "__main__":
     success = run_all()
     exit(0 if success else 1)
+

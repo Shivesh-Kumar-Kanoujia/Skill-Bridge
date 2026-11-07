@@ -30,7 +30,6 @@ export default function DashboardPage() {
   const { isAuthenticated, isAuthReady } = useProtectedRoute();
   const { currentUser, projects, applications, invitations } = useSkillBridge();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [simulateNewUser, setSimulateNewUser] = useState(false);
 
   if (!isAuthReady || !isAuthenticated) {
     return (
@@ -44,22 +43,16 @@ export default function DashboardPage() {
   }
 
   // Projects where current user is owner or team member
-  const myActiveProjects = simulateNewUser 
-    ? [] 
-    : projects.filter(p => 
-        p.ownerId === currentUser.id || 
-        p.currentMembers.some(m => m.studentId === currentUser.id)
-      );
+  const myActiveProjects = projects.filter(p => 
+    p.ownerId === currentUser.id || 
+    p.currentMembers.some(m => m.studentId === currentUser.id)
+  );
 
   // Submitted applications
-  const myApplications = simulateNewUser 
-    ? [] 
-    : applications.filter(a => a.applicantId === currentUser.id);
+  const myApplications = applications.filter(a => a.applicantId === currentUser.id);
 
   // Invitations
-  const myInvitations = simulateNewUser 
-    ? [] 
-    : invitations.filter(i => i.receiverId === currentUser.id);
+  const myInvitations = invitations.filter(i => i.receiverId === currentUser.id);
 
   // Rule-based recommended projects (ranked by compatibility score)
   const rankedProjects = [...projects]
@@ -100,21 +93,6 @@ export default function DashboardPage() {
               <p className="text-xs sm:text-sm text-[#68716B] mt-1">
                 Explore recommended collaborations or track your active team requests.
               </p>
-            </div>
-
-            {/* View toggle for evaluation */}
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-[#E3E2D9] shadow-2xs">
-              <span className="text-xs text-[#8E9690]">View:</span>
-              <button
-                onClick={() => setSimulateNewUser(!simulateNewUser)}
-                className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                  simulateNewUser 
-                    ? 'bg-[#31594B] text-white' 
-                    : 'bg-[#ECE8DD] text-[#292F2B] hover:bg-[#E2DDD0]'
-                }`}
-              >
-                {simulateNewUser ? 'New Student' : 'Active Student'}
-              </button>
             </div>
           </div>
 
