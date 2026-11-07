@@ -11,12 +11,18 @@ import { motion } from 'motion/react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useSkillBridge();
-  const [email, setEmail] = useState('aarav.sharma@apex.edu');
-  const [password, setPassword] = useState('SkillBridge2026!');
+  const { login, isAuthenticated } = useSkillBridge();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +50,7 @@ export default function LoginPage() {
 
   const handleDemoFill = () => {
     setEmail('aarav.sharma@apex.edu');
-    setPassword('SkillBridge2026!');
+    setPassword('password123');
     setError('');
   };
 

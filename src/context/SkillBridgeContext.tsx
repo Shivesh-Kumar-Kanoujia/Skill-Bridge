@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Student, Project, Application, Invitation } from '@/types';
 import { MOCK_STUDENTS, MOCK_PROJECTS, MOCK_APPLICATIONS, MOCK_INVITATIONS, CURRENT_USER_ID } from '@/data/mockData';
 import { calculateMatchScore } from '@/lib/matching';
@@ -22,6 +23,7 @@ interface ToastNotification {
 interface SkillBridgeContextType {
   currentUser: Student;
   isAuthenticated: boolean;
+  isAuthReady: boolean;
   students: Student[];
   projects: Project[];
   applications: Application[];
@@ -30,8 +32,7 @@ interface SkillBridgeContextType {
   dismissNotification: (id: string) => void;
   showNotification: (title: string, message: string, type?: ToastNotification['type']) => void;
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (data: { name: string; email: string; department: string; semester: number }) => Promise<{ success: boolean }>;
-  logout: () => void;
+  signup: (data: { name: string; email: string; password: string; department: string; semester: number }) => Promise<{ success: boolean; error?: string }>;  logout: () => void;
   updateProfile: (updated: Partial<Student>) => void;
   uploadAvatar: (file: File) => Promise<{ success: boolean; avatarUrl?: string; error?: string }>;
   applyToProject: (projectId: string, roleTitle: string, statement: string) => { success: boolean; message: string };
@@ -47,7 +48,8 @@ const SkillBridgeContext = createContext<SkillBridgeContextType | undefined>(und
 
 export function SkillBridgeProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<Student>(MOCK_STUDENTS[0]);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
   const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
   const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
   const [applications, setApplications] = useState<Application[]>(MOCK_APPLICATIONS);
@@ -59,6 +61,14 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     async function initData() {
       // 1. Try local storage first for instant render
       try {
+        const token = localStorage.getItem('sb_token');
+        const savedAuth = localStorage.getItem('sb_auth');
+        if (token && savedAuth === 'true') {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+        }
+
         const savedUser = localStorage.getItem('sb_current_user');
         if (savedUser) setCurrentUser(JSON.parse(savedUser));
 
@@ -67,11 +77,10 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
 
         const savedInvs = localStorage.getItem('sb_invitations');
         if (savedInvs) setInvitations(JSON.parse(savedInvs));
-
-        const savedAuth = localStorage.getItem('sb_auth');
-        if (savedAuth !== null) setIsAuthenticated(savedAuth === 'true');
       } catch {
         // LocalStorage access fallback
+      } finally {
+        setIsAuthReady(true);
       }
 
       // 2. Fetch live data from backend if available
@@ -159,11 +168,12 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     }
   };
 
-  const signup = async (data: { name: string; email: string; department: string; semester: number }): Promise<{ success: boolean; error?: string }> => {
+  const signup = async (data: { name: string; email: string; password: string; department: string; semester: number }): Promise<{ success: boolean; error?: string }> => {
     try {
       await authApi.signup({
         name: data.name,
         email: data.email,
+        password: data.password,
         department: data.department,
         semester: Number(data.semester),
       });
@@ -204,7 +214,11 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
   const logout = () => {
     authApi.logout().catch(() => {});
     setIsAuthenticated(false);
-    localStorage.setItem('sb_auth', 'false');
+    try {
+      localStorage.removeItem('sb_token');
+      localStorage.setItem('sb_auth', 'false');
+      localStorage.removeItem('sb_current_user');
+    } catch {}
     showNotification('Signed Out', 'You have been signed out of your session.', 'info');
   };
 
@@ -508,6 +522,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
       value={{
         currentUser,
         isAuthenticated,
+        isAuthReady,
         students,
         projects,
         applications,
@@ -540,4 +555,17 @@ export function useSkillBridge() {
     throw new Error('useSkillBridge must be used within a SkillBridgeProvider');
   }
   return context;
+}
+
+export function useProtectedRoute() {
+  const { isAuthenticated, isAuthReady } = useSkillBridge();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isAuthReady && !isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [isAuthReady, isAuthenticated, router]);
+
+  return { isAuthenticated, isAuthReady };
 }

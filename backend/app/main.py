@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +29,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("skillbridge")
 
+# ── Lifespan Handler ──
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting SkillBridge API (env=%s)", settings.APP_ENV)
+    logger.info("Database: %s", "SQLite (dev)" if settings.is_sqlite else "Production DB")
+    logger.info("CORS origins: %s", settings.CORS_ORIGINS)
+    await create_tables()
+    logger.info("Database tables created/verified.")
+    yield
+
+
 # ── App ──
 app = FastAPI(
     title="SkillBridge API",
@@ -35,6 +47,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
 # ── CORS ──
@@ -73,16 +86,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": "An internal server error occurred."},
     )
-
-
-# ── Startup ──
-@app.on_event("startup")
-async def on_startup():
-    logger.info("Starting SkillBridge API (env=%s)", settings.APP_ENV)
-    logger.info("Database: %s", "SQLite (dev)" if settings.is_sqlite else "Production DB")
-    logger.info("CORS origins: %s", settings.CORS_ORIGINS)
-    await create_tables()
-    logger.info("Database tables created/verified.")
 
 
 # ── Health check ──

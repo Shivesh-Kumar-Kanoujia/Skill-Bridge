@@ -56,11 +56,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 // ── Auth API ──
 export const authApi = {
-  async signup(data: { name: string; email: string; password?: string; department: string; semester: number }) {
+  async signup(data: { name: string; email: string; password: string; department: string; semester: number }) {
     const payload = {
       name: data.name,
       email: data.email,
-      password: data.password || 'password123',
+      password: data.password,
       department: data.department,
       semester: Number(data.semester),
     };

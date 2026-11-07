@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useSkillBridge } from '@/context/SkillBridgeContext';
+import { useSkillBridge, useProtectedRoute } from '@/context/SkillBridgeContext';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -23,6 +23,7 @@ import { getAvatarUrl } from '@/lib/utils';
 import { motion } from 'motion/react';
 
 export default function ProfilePage() {
+  const { isAuthenticated, isAuthReady } = useProtectedRoute();
   const { currentUser, updateProfile, uploadAvatar } = useSkillBridge();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -47,6 +48,17 @@ export default function ProfilePage() {
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillLevel, setNewSkillLevel] = useState<SkillLevel>('Intermediate');
   const [newSkillCategory, setNewSkillCategory] = useState<StudentSkill['category']>('Frontend');
+
+  if (!isAuthReady || !isAuthenticated) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-24 bg-[#F4F1E8]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#31594B] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-[#68716B]">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
 
   const [interests, setInterests] = useState<string[]>(currentUser.interests);
   const [newInterest, setNewInterest] = useState('');

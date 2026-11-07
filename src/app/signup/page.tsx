@@ -11,7 +11,7 @@ import { motion } from 'motion/react';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { signup } = useSkillBridge();
+  const { signup, isAuthenticated } = useSkillBridge();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -24,6 +24,12 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [isAuthenticated, router]);
 
   const departments = [
     'Computer Science & Engineering',
@@ -56,6 +62,7 @@ export default function SignupPage() {
     const result = await signup({
       name: formData.name,
       email: formData.email,
+      password: formData.password,
       department: formData.department,
       semester: Number(formData.semester),
     });
@@ -63,6 +70,8 @@ export default function SignupPage() {
 
     if (result.success) {
       router.push('/dashboard');
+    } else {
+      setError(result.error || 'Registration failed. Please check your details.');
     }
   };
 

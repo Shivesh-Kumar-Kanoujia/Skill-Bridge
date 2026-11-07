@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useSkillBridge } from '@/context/SkillBridgeContext';
+import { useSkillBridge, useProtectedRoute } from '@/context/SkillBridgeContext';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -19,6 +19,7 @@ import { motion } from 'motion/react';
 import { getAvatarUrl } from '@/lib/utils';
 
 export default function ApplicationsPage() {
+  const { isAuthenticated, isAuthReady } = useProtectedRoute();
   const { 
     currentUser, 
     applications, 
@@ -47,6 +48,17 @@ export default function ApplicationsPage() {
     title: '',
     description: ''
   });
+
+  if (!isAuthReady || !isAuthenticated) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-24 bg-[#F4F1E8]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#31594B] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-[#68716B]">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
 
   const ownedProjectIds = projects.filter(p => p.ownerId === currentUser.id).map(p => p.id);
   const receivedApplications = applications.filter(a => ownedProjectIds.includes(a.projectId));

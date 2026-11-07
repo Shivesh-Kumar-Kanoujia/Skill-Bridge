@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useSkillBridge } from '@/context/SkillBridgeContext';
+import { useSkillBridge, useProtectedRoute } from '@/context/SkillBridgeContext';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { ProjectCard } from '@/components/shared/ProjectCard';
 import { ApplyModal } from '@/components/shared/ApplyModal';
@@ -27,9 +27,21 @@ import {
 import { motion } from 'motion/react';
 
 export default function DashboardPage() {
+  const { isAuthenticated, isAuthReady } = useProtectedRoute();
   const { currentUser, projects, applications, invitations } = useSkillBridge();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [simulateNewUser, setSimulateNewUser] = useState(false);
+
+  if (!isAuthReady || !isAuthenticated) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-24 bg-[#F4F1E8]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#31594B] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-[#68716B]">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Projects where current user is owner or team member
   const myActiveProjects = simulateNewUser 
