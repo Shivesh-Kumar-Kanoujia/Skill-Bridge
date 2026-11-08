@@ -37,6 +37,23 @@ async def lifespan(app: FastAPI):
     logger.info("CORS origins: %s", settings.CORS_ORIGINS)
     await create_tables()
     logger.info("Database tables created/verified.")
+
+    # Auto-seed if skills table is empty (helpful for fresh deployments on Render/Cloud)
+    try:
+        from sqlalchemy import select, func
+        from app.core.database import AsyncSessionLocal
+        from app.models import Skill
+        from app.core.seed import seed_database
+
+        async with AsyncSessionLocal() as session:
+            count = await session.scalar(select(func.count(Skill.id)))
+            if not count:
+                logger.info("Database is empty. Running initial canonical seed...")
+                counts = await seed_database(session)
+                logger.info("Initial seed completed: %s", counts)
+    except Exception as e:
+        logger.warning("Auto-seed check skipped or failed: %s", e)
+
     yield
 
 
@@ -54,7 +71,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$|^https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
