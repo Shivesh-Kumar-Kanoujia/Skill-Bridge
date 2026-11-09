@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useSkillBridge } from '@/context/SkillBridgeContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Eye, EyeOff, Lock, Mail, User, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, User, ArrowRight, GraduationCap } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function SignupPage() {
@@ -19,6 +19,7 @@ export default function SignupPage() {
     password: '',
     department: 'Computer Science & Engineering',
     semester: 5,
+    college: 'Apex Institute of Technology',
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -65,6 +66,7 @@ export default function SignupPage() {
       password: formData.password,
       department: formData.department,
       semester: Number(formData.semester),
+      college: formData.college,
     });
     setIsLoading(false);
 
@@ -149,6 +151,16 @@ export default function SignupPage() {
                 </button>
               </div>
             </div>
+
+            <Input
+              label="College / Institute"
+              type="text"
+              value={formData.college}
+              onChange={(e) => setFormData({ ...formData, college: e.target.value })}
+              placeholder="Apex Institute of Technology"
+              leftIcon={<GraduationCap className="w-4 h-4" />}
+              helperText="Your university or institute campus."
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

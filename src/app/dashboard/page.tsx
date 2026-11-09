@@ -6,6 +6,7 @@ import { useSkillBridge, useProtectedRoute } from '@/context/SkillBridgeContext'
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { ProjectCard } from '@/components/shared/ProjectCard';
 import { ApplyModal } from '@/components/shared/ApplyModal';
+import { CreateProjectModal } from '@/components/shared/CreateProjectModal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -22,7 +23,8 @@ import {
   CheckCircle2, 
   AlertCircle,
   Clock,
-  ArrowUpRight
+  ArrowUpRight,
+  Plus
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -30,6 +32,7 @@ export default function DashboardPage() {
   const { isAuthenticated, isAuthReady } = useProtectedRoute();
   const { currentUser, projects, applications, invitations } = useSkillBridge();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   if (!isAuthReady || !isAuthenticated) {
     return (
@@ -94,6 +97,15 @@ export default function DashboardPage() {
                 Explore recommended collaborations or track your active team requests.
               </p>
             </div>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsCreateOpen(true)}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              Recruit Teammates
+            </Button>
           </div>
 
           {/* Profile Completion Card */}
@@ -330,6 +342,11 @@ export default function DashboardPage() {
         project={selectedProject}
         isOpen={!!selectedProject}
         onClose={() => setSelectedProject(null)}
+      />
+
+      <CreateProjectModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
       />
     </div>
   );

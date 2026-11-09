@@ -184,7 +184,7 @@ async def update_my_profile(
         update_data["preferred_roles"] = json.dumps(update_data["preferred_roles"])
 
     for field, value in update_data.items():
-        if value is not None:
+        if value is not None and hasattr(profile, field):
             setattr(profile, field, value)
 
     # Update skills if provided

@@ -62,27 +62,33 @@ export default function ProfilePage() {
 
   const [interests, setInterests] = useState<string[]>(currentUser.interests);
   const [newInterest, setNewInterest] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
-    updateProfile({
-      name: formData.name,
-      headline: formData.headline,
-      bio: formData.bio,
-      department: formData.department,
-      semester: Number(formData.semester),
-      college: formData.college,
-      githubUrl: formData.githubUrl,
-      linkedinUrl: formData.linkedinUrl,
-      portfolioUrl: formData.portfolioUrl,
-      skills,
-      interests,
-      availability: {
-        hoursPerWeek: Number(formData.hoursPerWeek),
-        status: formData.availabilityStatus as any,
-        note: formData.availabilityNote,
-      },
-    });
-    setIsEditing(false);
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateProfile({
+        name: formData.name,
+        headline: formData.headline,
+        bio: formData.bio,
+        department: formData.department,
+        semester: Number(formData.semester),
+        college: formData.college,
+        githubUrl: formData.githubUrl,
+        linkedinUrl: formData.linkedinUrl,
+        portfolioUrl: formData.portfolioUrl,
+        skills,
+        interests,
+        availability: {
+          hoursPerWeek: Number(formData.hoursPerWeek),
+          status: formData.availabilityStatus as any,
+          note: formData.availabilityNote,
+        },
+      });
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -187,8 +193,15 @@ export default function ProfilePage() {
                   <Button variant="outline" size="sm" onClick={handleCancel}>
                     Cancel
                   </Button>
-                  <Button variant="primary" size="sm" onClick={handleSave} leftIcon={<Save className="w-3.5 h-3.5" />}>
-                    Save Changes
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    isLoading={isSaving}
+                    leftIcon={!isSaving ? <Save className="w-3.5 h-3.5" /> : undefined}
+                  >
+                    {isSaving ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </>
               ) : (
@@ -260,6 +273,12 @@ export default function ProfilePage() {
                         className="w-full h-10 px-3.5 rounded-lg border border-[#E3E2D9] text-sm text-[#292F2B] focus:outline-none focus:ring-2 focus:ring-[#31594B]"
                       />
                     </div>
+                    <Input
+                      label="College / Institute"
+                      value={formData.college}
+                      onChange={(e) => setFormData({ ...formData, college: e.target.value })}
+                      placeholder="e.g. Apex Institute of Technology"
+                    />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-semibold text-[#292F2B] uppercase tracking-wider mb-1.5 block">

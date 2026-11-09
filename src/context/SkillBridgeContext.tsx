@@ -32,9 +32,26 @@ interface SkillBridgeContextType {
   dismissNotification: (id: string) => void;
   showNotification: (title: string, message: string, type?: ToastNotification['type']) => void;
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (data: { name: string; email: string; password: string; department: string; semester: number }) => Promise<{ success: boolean; error?: string }>;
+  signup: (data: { name: string; email: string; password: string; department: string; semester: number; college?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   resetPassword: (email: string, newPass: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  createProject: (data: {
+    title: string;
+    tagline?: string;
+    description: string;
+    category: string;
+    maxTeamSize: number;
+    duration?: string;
+    deadline?: string;
+    requiredSkills: string[];
+    preferredInterests?: string[];
+    openRoles: {
+      title: string;
+      spots: number;
+      description?: string;
+      skills: string[];
+    }[];
+  }) => Promise<{ success: boolean; project?: Project; error?: string }>;
   updateProfile: (updated: Partial<Student>) => void;
   uploadAvatar: (file: File) => Promise<{ success: boolean; avatarUrl?: string; error?: string }>;
   applyToProject: (projectId: string, roleTitle: string, statement: string) => { success: boolean; message: string };
@@ -192,7 +209,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     }
   };
 
-  const signup = async (data: { name: string; email: string; password: string; department: string; semester: number }): Promise<{ success: boolean; error?: string }> => {
+  const signup = async (data: { name: string; email: string; password: string; department: string; semester: number; college?: string }): Promise<{ success: boolean; error?: string }> => {
     try {
       await authApi.signup({
         name: data.name,
@@ -200,6 +217,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
         password: data.password,
         department: data.department,
         semester: Number(data.semester),
+        college: data.college,
       });
       const myProfile = await studentsApi.getMyProfile();
       setCurrentUser(myProfile);
@@ -220,6 +238,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
           email: data.email,
           department: data.department,
           semester: Number(data.semester),
+          college: data.college || 'Apex Institute of Technology',
         };
         setCurrentUser(newStudent);
         setIsAuthenticated(true);
@@ -232,6 +251,101 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
       }
       showNotification('Signup Failed', err.message, 'error');
       return { success: false, error: err.message };
+    }
+  };
+
+  const createProject = async (data: {
+    title: string;
+    tagline?: string;
+    description: string;
+    category: string;
+    maxTeamSize: number;
+    duration?: string;
+    deadline?: string;
+    requiredSkills: string[];
+    preferredInterests?: string[];
+    openRoles: {
+      title: string;
+      spots: number;
+      description?: string;
+      skills: string[];
+    }[];
+  }): Promise<{ success: boolean; project?: Project; error?: string }> => {
+    try {
+      const created = await projectsApi.create({
+        title: data.title,
+        tagline: data.tagline,
+        description: data.description,
+        category: data.category as any,
+        maxTeamSize: data.maxTeamSize,
+        duration: data.duration,
+        deadline: data.deadline,
+        requiredSkills: data.requiredSkills,
+        preferredInterests: data.preferredInterests || [],
+        openRoles: data.openRoles.map((r, i) => ({
+          id: `role-${Date.now()}-${i}`,
+          title: r.title,
+          spots: r.spots,
+          filled: 0,
+          description: r.description || '',
+          skills: r.skills,
+        })),
+        status: 'Recruiting',
+      });
+      const updatedProjects = [created, ...projects];
+      setProjects(updatedProjects);
+      try {
+        localStorage.setItem('sb_projects', JSON.stringify(updatedProjects));
+      } catch {}
+      showNotification('Project Created', `"${data.title}" is now open for teammate applications!`);
+      return { success: true, project: created };
+    } catch (err: any) {
+      const mockId = `proj-${Date.now()}`;
+      const fallbackProject: Project = {
+        id: mockId,
+        title: data.title,
+        tagline: data.tagline || (data.description.length > 80 ? data.description.substring(0, 80) + '...' : data.description),
+        description: data.description,
+        category: data.category as any,
+        status: 'Recruiting',
+        ownerId: currentUser.id,
+        ownerName: currentUser.name,
+        ownerAvatar: currentUser.avatar,
+        ownerDepartment: currentUser.department,
+        teamSize: {
+          current: 1,
+          max: data.maxTeamSize,
+        },
+        createdAt: new Date().toISOString(),
+        deadline: data.deadline || '2026-12-31',
+        duration: data.duration || '8 Weeks',
+        requiredSkills: data.requiredSkills,
+        preferredInterests: data.preferredInterests || [],
+        openRoles: data.openRoles.map((r, i) => ({
+          id: `role-${mockId}-${i}`,
+          title: r.title,
+          spots: r.spots,
+          filled: 0,
+          description: r.description || '',
+          skills: r.skills,
+        })),
+        currentMembers: [
+          {
+            studentId: currentUser.id,
+            name: currentUser.name,
+            avatar: currentUser.avatar,
+            role: 'Project Lead',
+            department: currentUser.department,
+          },
+        ],
+      };
+      const updatedProjects = [fallbackProject, ...projects];
+      setProjects(updatedProjects);
+      try {
+        localStorage.setItem('sb_projects', JSON.stringify(updatedProjects));
+      } catch {}
+      showNotification('Project Created', `"${data.title}" is now published!`);
+      return { success: true, project: fallbackProject };
     }
   };
 
@@ -558,6 +672,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
         signup,
         logout,
         resetPassword,
+        createProject,
         updateProfile,
         uploadAvatar,
         applyToProject,

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 # ════════════════════════════════════════════
@@ -17,6 +17,7 @@ class SignupRequest(BaseModel):
     password: str = Field(..., min_length=6, max_length=128)
     department: str = Field(..., min_length=2, max_length=100)
     semester: int = Field(..., ge=1, le=10)
+    college: Optional[str] = Field(None, max_length=200)
 
     @field_validator("email")
     @classmethod
@@ -158,6 +159,30 @@ class ProfileUpdateRequest(BaseModel):
     portfolio_url: Optional[str] = None
     skills: Optional[List[SkillBase]] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def preprocess_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Map nested availability object
+            avail = data.get("availability")
+            if isinstance(avail, dict):
+                if "hoursPerWeek" in avail and "availability_hours" not in data:
+                    data["availability_hours"] = avail["hoursPerWeek"]
+                if "status" in avail and "availability_status" not in data:
+                    data["availability_status"] = avail["status"]
+                if "note" in avail and "availability_note" not in data:
+                    data["availability_note"] = avail["note"]
+            # Map camelCase to snake_case
+            if "githubUrl" in data and "github_url" not in data:
+                data["github_url"] = data["githubUrl"]
+            if "linkedinUrl" in data and "linkedin_url" not in data:
+                data["linkedin_url"] = data["linkedinUrl"]
+            if "portfolioUrl" in data and "portfolio_url" not in data:
+                data["portfolio_url"] = data["portfolioUrl"]
+            if "preferredRoles" in data and "preferred_roles" not in data:
+                data["preferred_roles"] = data["preferredRoles"]
+        return data
+
     @field_validator("availability_status")
     @classmethod
     def validate_avail(cls, v):
@@ -228,6 +253,20 @@ class ProjectCreateRequest(BaseModel):
     preferred_interests: List[str] = []
     open_roles: List[ProjectRoleSchema] = []
     status: str = "Recruiting"
+
+    @model_validator(mode="before")
+    @classmethod
+    def preprocess_project(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "maxTeamSize" in data and "max_team_size" not in data:
+                data["max_team_size"] = data["maxTeamSize"]
+            if "requiredSkills" in data and "required_skills" not in data:
+                data["required_skills"] = data["requiredSkills"]
+            if "preferredInterests" in data and "preferred_interests" not in data:
+                data["preferred_interests"] = data["preferredInterests"]
+            if "openRoles" in data and "open_roles" not in data:
+                data["open_roles"] = data["openRoles"]
+        return data
 
     @field_validator("category")
     @classmethod

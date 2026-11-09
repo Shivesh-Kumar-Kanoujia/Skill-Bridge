@@ -58,6 +58,7 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
         name=body.name,
         department=body.department,
         semester=body.semester,
+        college=body.college.strip() if body.college and body.college.strip() else "Apex Institute of Technology",
     )
     db.add(profile)
     await log_action(db, user_id=user.id, action="SIGNUP", entity_type="user", entity_id=user.id, details=f"User signed up: {user.email}")

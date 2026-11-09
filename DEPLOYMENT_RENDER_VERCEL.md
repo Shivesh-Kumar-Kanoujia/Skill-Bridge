@@ -121,3 +121,4 @@ Under the **Environment Variables** section, add:
   ["http://localhost:3000","https://mycollegename.org"]
   ```
   *(All `https://*.vercel.app` domains are automatically allowed by default)*
+

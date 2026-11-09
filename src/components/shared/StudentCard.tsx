@@ -46,6 +46,11 @@ export function StudentCard({ student, onInviteClick }: StudentCardProps) {
               <p className="text-xs text-[#68716B] mt-0.5">
                 Sem {student.semester} • {student.department.split('&')[0].trim()}
               </p>
+              {student.college && (
+                <p className="text-[10px] text-[#8E9690] truncate max-w-[200px]" title={student.college}>
+                  {student.college}
+                </p>
+              )}
             </div>
           </div>
 

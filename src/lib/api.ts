@@ -56,13 +56,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 // ── Auth API ──
 export const authApi = {
-  async signup(data: { name: string; email: string; password: string; department: string; semester: number }) {
+  async signup(data: { name: string; email: string; password: string; department: string; semester: number; college?: string }) {
     const payload = {
       name: data.name,
       email: data.email,
       password: data.password,
       department: data.department,
       semester: Number(data.semester),
+      college: data.college || undefined,
     };
     const res = await request<{ access_token: string; user: { id: number; email: string; role: string } }>('/api/auth/signup', {
       method: 'POST',
@@ -165,7 +166,7 @@ export const projectsApi = {
     return request<Project>(`/api/projects/${numericId}`);
   },
 
-  async create(project: Partial<Project>) {
+  async create(project: Record<string, any>) {
     return request<Project>('/api/projects', {
       method: 'POST',
       body: JSON.stringify(project),

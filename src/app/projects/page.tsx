@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useSkillBridge } from '@/context/SkillBridgeContext';
 import { ProjectCard } from '@/components/shared/ProjectCard';
 import { ApplyModal } from '@/components/shared/ApplyModal';
+import { CreateProjectModal } from '@/components/shared/CreateProjectModal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -15,7 +16,8 @@ import {
   X, 
   RotateCcw, 
   Compass,
-  ArrowUpDown
+  ArrowUpDown,
+  Plus
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -30,6 +32,7 @@ function ProjectsContent() {
   const [selectedDuration, setSelectedDuration] = useState<string>('All');
   const [sortBy, setSortBy] = useState<'match' | 'newest' | 'spots'>('match');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   // Available filter options
   const categories: ('All' | ProjectCategory)[] = [
@@ -122,9 +125,19 @@ function ProjectsContent() {
           </p>
         </div>
 
-        {/* Total count badge */}
-        <div className="text-xs font-semibold text-[#68716B] bg-white px-3 py-1.5 rounded-xl border border-[#E3E2D9] shadow-2xs self-start sm:self-auto">
-          Showing {filteredProjects.length} of {projects.length} opportunities
+        {/* Action button & total count badge */}
+        <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+          <div className="text-xs font-semibold text-[#68716B] bg-white px-3 py-1.5 rounded-xl border border-[#E3E2D9] shadow-2xs">
+            Showing {filteredProjects.length} of {projects.length} opportunities
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            Recruit Teammates
+          </Button>
         </div>
       </div>
 
@@ -247,6 +260,12 @@ function ProjectsContent() {
         project={selectedProject}
         isOpen={!!selectedProject}
         onClose={() => setSelectedProject(null)}
+      />
+
+      {/* Recruit Teammates / Create Project Modal */}
+      <CreateProjectModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
       />
     </div>
   );

@@ -86,7 +86,7 @@ function StudentDetailContent() {
                 {student.headline}
               </p>
               <p className="text-xs text-[#68716B] mt-1">
-                Semester {student.semester} • {student.department} • {student.college}
+                Semester {student.semester} • {student.department} {student.college ? `• ${student.college}` : ''}
               </p>
 
               {/* External Links */}
