@@ -48,7 +48,7 @@ export default function DashboardPage() {
   // Projects where current user is owner or team member
   const myActiveProjects = projects.filter(p => 
     p.ownerId === currentUser.id || 
-    p.currentMembers.some(m => m.studentId === currentUser.id)
+    p.currentMembers?.some(m => m.studentId === currentUser.id)
   );
 
   // Submitted applications

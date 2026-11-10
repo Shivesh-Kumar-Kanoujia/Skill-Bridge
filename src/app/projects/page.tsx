@@ -91,8 +91,8 @@ function ProjectsContent() {
           return new Date(b.project.createdAt).getTime() - new Date(a.project.createdAt).getTime();
         }
         if (sortBy === 'spots') {
-          const spotsA = a.project.teamSize.max - a.project.teamSize.current;
-          const spotsB = b.project.teamSize.max - b.project.teamSize.current;
+          const spotsA = (a.project.teamSize?.max || 4) - (a.project.teamSize?.current || 1);
+          const spotsB = (b.project.teamSize?.max || 4) - (b.project.teamSize?.current || 1);
           return spotsB - spotsA;
         }
         return 0;

@@ -67,7 +67,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateProfile({
+      const res = await updateProfile({
         name: formData.name,
         headline: formData.headline,
         bio: formData.bio,
@@ -85,6 +85,9 @@ export default function ProfilePage() {
           note: formData.availabilityNote,
         },
       });
+      if (res && res.success === false) {
+        return;
+      }
       setIsEditing(false);
     } finally {
       setIsSaving(false);

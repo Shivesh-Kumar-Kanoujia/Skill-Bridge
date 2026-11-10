@@ -144,7 +144,14 @@ export const studentsApi = {
       body: formData,
     });
 
-    if (!res.ok) throw new Error('Avatar upload failed');
+    if (!res.ok) {
+      let errDetail = `Avatar upload failed with status ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson.detail) errDetail = errJson.detail;
+      } catch {}
+      throw new Error(errDetail);
+    }
     return res.json();
   },
 };

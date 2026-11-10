@@ -52,7 +52,7 @@ interface SkillBridgeContextType {
       skills: string[];
     }[];
   }) => Promise<{ success: boolean; project?: Project; error?: string }>;
-  updateProfile: (updated: Partial<Student>) => void;
+  updateProfile: (updated: Partial<Student>) => Promise<{ success: boolean; error?: string }>;
   uploadAvatar: (file: File) => Promise<{ success: boolean; avatarUrl?: string; error?: string }>;
   applyToProject: (projectId: string, roleTitle: string, statement: string) => { success: boolean; message: string };
   withdrawApplication: (applicationId: string) => void;
@@ -91,6 +91,14 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
         const savedUser = localStorage.getItem('sb_current_user');
         if (savedUser) setCurrentUser(JSON.parse(savedUser));
 
+        const savedProjects = localStorage.getItem('sb_projects');
+        if (savedProjects) {
+          try {
+            const parsed = JSON.parse(savedProjects);
+            if (Array.isArray(parsed) && parsed.length > 0) setProjects(parsed);
+          } catch {}
+        }
+
         const savedApps = localStorage.getItem('sb_applications');
         if (savedApps) setApplications(JSON.parse(savedApps));
 
@@ -102,31 +110,49 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
         setIsAuthReady(true);
       }
 
-      // 2. Fetch live data from backend if available
+      // 2. Fetch authoritative live data from backend
       try {
         const [liveProjects, liveStudents] = await Promise.all([
           projectsApi.list().catch(() => null),
           studentsApi.list().catch(() => null),
         ]);
-        if (liveProjects && liveProjects.length > 0) setProjects(liveProjects);
+        if (liveProjects && liveProjects.length > 0) {
+          setProjects(liveProjects);
+          try {
+            localStorage.setItem('sb_projects', JSON.stringify(liveProjects));
+          } catch {}
+        }
         if (liveStudents && liveStudents.length > 0) setStudents(liveStudents);
 
         const token = localStorage.getItem('sb_token');
         if (token) {
-          const myProfile = await studentsApi.getMyProfile().catch(() => null);
-          if (myProfile) {
+          try {
+            const myProfile = await studentsApi.getMyProfile();
             setCurrentUser(myProfile);
             setIsAuthenticated(true);
+            try {
+              localStorage.setItem('sb_current_user', JSON.stringify(myProfile));
+              localStorage.setItem('sb_auth', 'true');
+            } catch {}
+
+            const [myApps, myInvs] = await Promise.all([
+              applicationsApi.getMyApplications().catch(() => null),
+              invitationsApi.getMyInvitations().catch(() => null),
+            ]);
+            if (myApps && myApps.length > 0) setApplications(myApps);
+            if (myInvs && myInvs.length > 0) setInvitations(myInvs);
+          } catch (profileErr: any) {
+            // Token expired or invalid — clear stale session
+            if (profileErr?.message?.includes('401') || profileErr?.message?.includes('token')) {
+              localStorage.removeItem('sb_token');
+              localStorage.removeItem('sb_current_user');
+              localStorage.setItem('sb_auth', 'false');
+              setIsAuthenticated(false);
+            }
           }
-          const [myApps, myInvs] = await Promise.all([
-            applicationsApi.getMyApplications().catch(() => null),
-            invitationsApi.getMyInvitations().catch(() => null),
-          ]);
-          if (myApps && myApps.length > 0) setApplications(myApps);
-          if (myInvs && myInvs.length > 0) setInvitations(myInvs);
         }
       } catch {
-        // Backend offline or unreachable — continues with local data
+        // Backend offline or unreachable — continues with cached data
       }
     }
 
@@ -151,50 +177,37 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     const cleanEmail = email.trim();
     try {
       await authApi.login(cleanEmail, pass);
-      const myProfile = await studentsApi.getMyProfile();
+
+      // Fetch fresh authenticated profile and latest server data in parallel
+      const [myProfile, liveProjects, liveStudents, myApps, myInvs] = await Promise.all([
+        studentsApi.getMyProfile(),
+        projectsApi.list().catch(() => null),
+        studentsApi.list().catch(() => null),
+        applicationsApi.getMyApplications().catch(() => null),
+        invitationsApi.getMyInvitations().catch(() => null),
+      ]);
+
       setCurrentUser(myProfile);
       setIsAuthenticated(true);
+      if (liveProjects && liveProjects.length > 0) {
+        setProjects(liveProjects);
+        try {
+          localStorage.setItem('sb_projects', JSON.stringify(liveProjects));
+        } catch {}
+      }
+      if (liveStudents && liveStudents.length > 0) setStudents(liveStudents);
+      if (myApps && myApps.length > 0) setApplications(myApps);
+      if (myInvs && myInvs.length > 0) setInvitations(myInvs);
+
       try {
         localStorage.setItem('sb_current_user', JSON.stringify(myProfile));
         localStorage.setItem('sb_auth', 'true');
       } catch {}
 
-      // Refresh applications & invitations
-      const [myApps, myInvs] = await Promise.all([
-        applicationsApi.getMyApplications().catch(() => null),
-        invitationsApi.getMyInvitations().catch(() => null),
-      ]);
-      if (myApps && myApps.length > 0) setApplications(myApps);
-      if (myInvs && myInvs.length > 0) setInvitations(myInvs);
-
       showNotification('Welcome back!', `Signed in as ${myProfile.name}`);
       return { success: true };
     } catch (err: any) {
-      // Offline / fallback mode
-      if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError') || err.message?.includes('404')) {
-        await new Promise(res => setTimeout(res, 300));
-        if (!cleanEmail.includes('@')) {
-          return { success: false, error: 'Please enter a valid academic email address.' };
-        }
-        if (pass.length < 6) {
-          return { success: false, error: 'Password must be at least 6 characters long.' };
-        }
-        const matched = students.find(s => s.email.toLowerCase() === cleanEmail.toLowerCase()) || {
-          ...currentUser,
-          id: `student-${Date.now()}`,
-          name: cleanEmail.split('@')[0].replace('.', ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase()),
-          email: cleanEmail,
-        };
-        setCurrentUser(matched);
-        setIsAuthenticated(true);
-        try {
-          localStorage.setItem('sb_token', `offline-token-${Date.now()}`);
-          localStorage.setItem('sb_current_user', JSON.stringify(matched));
-          localStorage.setItem('sb_auth', 'true');
-        } catch {}
-        showNotification('Welcome back!', `Signed in as ${matched.name}`);
-        return { success: true };
-      }
+      showNotification('Sign In Failed', err.message || 'Invalid credentials or server unavailable.', 'error');
       return { success: false, error: err.message || 'Login failed.' };
     }
   };
@@ -219,37 +232,32 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
         semester: Number(data.semester),
         college: data.college,
       });
-      const myProfile = await studentsApi.getMyProfile();
+
+      const [myProfile, liveProjects, liveStudents] = await Promise.all([
+        studentsApi.getMyProfile(),
+        projectsApi.list().catch(() => null),
+        studentsApi.list().catch(() => null),
+      ]);
+
       setCurrentUser(myProfile);
       setIsAuthenticated(true);
+      if (liveProjects && liveProjects.length > 0) {
+        setProjects(liveProjects);
+        try {
+          localStorage.setItem('sb_projects', JSON.stringify(liveProjects));
+        } catch {}
+      }
+      if (liveStudents && liveStudents.length > 0) setStudents(liveStudents);
+
       try {
         localStorage.setItem('sb_current_user', JSON.stringify(myProfile));
         localStorage.setItem('sb_auth', 'true');
       } catch {}
+
       showNotification('Account Created', `Welcome to SkillBridge, ${data.name}!`);
       return { success: true };
     } catch (err: any) {
-      if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError') || err.message?.includes('404')) {
-        await new Promise(res => setTimeout(res, 500));
-        const newStudent: Student = {
-          ...currentUser,
-          id: `student-${Date.now()}`,
-          name: data.name,
-          email: data.email,
-          department: data.department,
-          semester: Number(data.semester),
-          college: data.college || 'Apex Institute of Technology',
-        };
-        setCurrentUser(newStudent);
-        setIsAuthenticated(true);
-        try {
-          localStorage.setItem('sb_current_user', JSON.stringify(newStudent));
-          localStorage.setItem('sb_auth', 'true');
-        } catch {}
-        showNotification('Account Created', `Welcome to SkillBridge, ${data.name}!`);
-        return { success: true };
-      }
-      showNotification('Signup Failed', err.message, 'error');
+      showNotification('Signup Failed', err.message || 'Registration failed.', 'error');
       return { success: false, error: err.message };
     }
   };
@@ -292,60 +300,20 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
         })),
         status: 'Recruiting',
       });
-      const updatedProjects = [created, ...projects];
-      setProjects(updatedProjects);
+
+      // Synchronize with fresh server state so all discovery boards and dashboard are in sync
+      const liveProjects = await projectsApi.list().catch(() => null);
+      const nextProjects = (liveProjects && liveProjects.length > 0) ? liveProjects : [created, ...projects];
+      setProjects(nextProjects);
       try {
-        localStorage.setItem('sb_projects', JSON.stringify(updatedProjects));
+        localStorage.setItem('sb_projects', JSON.stringify(nextProjects));
       } catch {}
+
       showNotification('Project Created', `"${data.title}" is now open for teammate applications!`);
       return { success: true, project: created };
     } catch (err: any) {
-      const mockId = `proj-${Date.now()}`;
-      const fallbackProject: Project = {
-        id: mockId,
-        title: data.title,
-        tagline: data.tagline || (data.description.length > 80 ? data.description.substring(0, 80) + '...' : data.description),
-        description: data.description,
-        category: data.category as any,
-        status: 'Recruiting',
-        ownerId: currentUser.id,
-        ownerName: currentUser.name,
-        ownerAvatar: currentUser.avatar,
-        ownerDepartment: currentUser.department,
-        teamSize: {
-          current: 1,
-          max: data.maxTeamSize,
-        },
-        createdAt: new Date().toISOString(),
-        deadline: data.deadline || '2026-12-31',
-        duration: data.duration || '8 Weeks',
-        requiredSkills: data.requiredSkills,
-        preferredInterests: data.preferredInterests || [],
-        openRoles: data.openRoles.map((r, i) => ({
-          id: `role-${mockId}-${i}`,
-          title: r.title,
-          spots: r.spots,
-          filled: 0,
-          description: r.description || '',
-          skills: r.skills,
-        })),
-        currentMembers: [
-          {
-            studentId: currentUser.id,
-            name: currentUser.name,
-            avatar: currentUser.avatar,
-            role: 'Project Lead',
-            department: currentUser.department,
-          },
-        ],
-      };
-      const updatedProjects = [fallbackProject, ...projects];
-      setProjects(updatedProjects);
-      try {
-        localStorage.setItem('sb_projects', JSON.stringify(updatedProjects));
-      } catch {}
-      showNotification('Project Created', `"${data.title}" is now published!`);
-      return { success: true, project: fallbackProject };
+      showNotification('Project Creation Failed', err.message || 'Unable to publish project to server.', 'error');
+      return { success: false, error: err.message || 'Could not save project.' };
     }
   };
 
@@ -360,7 +328,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     showNotification('Signed Out', 'You have been signed out of your session.', 'info');
   };
 
-  const updateProfile = async (updated: Partial<Student>) => {
+  const updateProfile = async (updated: Partial<Student>): Promise<{ success: boolean; error?: string }> => {
     try {
       const saved = await studentsApi.updateMyProfile(updated);
       setCurrentUser(saved);
@@ -369,17 +337,10 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
         localStorage.setItem('sb_current_user', JSON.stringify(saved));
       } catch {}
       showNotification('Profile Updated', 'Your profile details and skills have been saved.');
-    } catch {
-      // Local fallback
-      setCurrentUser(prev => {
-        const nextUser = { ...prev, ...updated };
-        try {
-          localStorage.setItem('sb_current_user', JSON.stringify(nextUser));
-        } catch {}
-        return nextUser;
-      });
-      setStudents(prev => prev.map(s => s.id === currentUser.id ? { ...s, ...updated } : s));
-      showNotification('Profile Updated', 'Your profile details and skills have been saved.');
+      return { success: true };
+    } catch (err: any) {
+      showNotification('Profile Update Failed', err.message || 'Could not save changes to server.', 'error');
+      return { success: false, error: err.message || 'Profile update failed' };
     }
   };
 
@@ -391,34 +352,31 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
         const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         newAvatarUrl = `${apiBase}${newAvatarUrl}`;
       }
-      if (!newAvatarUrl) {
-        newAvatarUrl = URL.createObjectURL(file);
+
+      // Re-fetch complete authoritative profile from server to guarantee sync
+      const freshProfile = await studentsApi.getMyProfile().catch(() => null);
+      if (freshProfile) {
+        setCurrentUser(freshProfile);
+        try {
+          localStorage.setItem('sb_current_user', JSON.stringify(freshProfile));
+        } catch {}
+        setStudents(prev => prev.map(s => s.id === freshProfile.id ? freshProfile : s));
+      } else if (newAvatarUrl) {
+        setCurrentUser(prev => {
+          const updated = { ...prev, avatar: newAvatarUrl };
+          try {
+            localStorage.setItem('sb_current_user', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+        setStudents(prev => prev.map(s => s.id === currentUser.id ? { ...s, avatar: newAvatarUrl } : s));
       }
 
-      setCurrentUser(prev => {
-        const updated = { ...prev, avatar: newAvatarUrl };
-        try {
-          localStorage.setItem('sb_current_user', JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
-
-      setStudents(prev => prev.map(s => s.id === currentUser.id ? { ...s, avatar: newAvatarUrl } : s));
       showNotification('Photo Updated', 'Your profile photo has been uploaded successfully.');
       return { success: true, avatarUrl: newAvatarUrl };
-    } catch {
-      // Local preview fallback if backend is offline
-      const localUrl = URL.createObjectURL(file);
-      setCurrentUser(prev => {
-        const updated = { ...prev, avatar: localUrl };
-        try {
-          localStorage.setItem('sb_current_user', JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
-      setStudents(prev => prev.map(s => s.id === currentUser.id ? { ...s, avatar: localUrl } : s));
-      showNotification('Photo Updated', 'Profile photo updated locally.');
-      return { success: true, avatarUrl: localUrl };
+    } catch (err: any) {
+      showNotification('Photo Upload Failed', err.message || 'Failed to upload photo to storage.', 'error');
+      return { success: false, error: err.message || 'Avatar upload failed' };
     }
   };
 

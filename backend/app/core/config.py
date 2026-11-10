@@ -9,6 +9,10 @@ from pydantic import field_validator
 from typing import List
 
 
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+DEFAULT_SQLITE_DB = (BACKEND_DIR / "skillbridge.db").as_posix()
+
+
 class Settings(BaseSettings):
     # ── App ──
     APP_ENV: str = "development"
@@ -17,7 +21,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24h
 
     # ── Database ──
-    DATABASE_URL: str = "sqlite+aiosqlite:///./skillbridge.db"
+    DATABASE_URL: str = f"sqlite+aiosqlite:///{DEFAULT_SQLITE_DB}"
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
@@ -28,6 +32,8 @@ class Settings(BaseSettings):
                 return v.replace("postgres://", "postgresql+asyncpg://", 1)
             elif v.startswith("postgresql://") and not v.startswith("postgresql+"):
                 return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+            elif v in ("sqlite+aiosqlite:///./skillbridge.db", "sqlite:///./skillbridge.db", "./skillbridge.db"):
+                return f"sqlite+aiosqlite:///{DEFAULT_SQLITE_DB}"
         return v
 
     # ── Azure Blob Storage ──
