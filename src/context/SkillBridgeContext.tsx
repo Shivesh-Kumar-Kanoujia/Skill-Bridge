@@ -96,10 +96,10 @@ const SkillBridgeContext = createContext<SkillBridgeContextType | undefined>(und
 export function SkillBridgeProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<Student>(MOCK_STUDENTS[0]);
   const currentUserRef = useRef<string | number>('0');
-  // Sync ref after initial render to avoid "Cannot access refs during render"
+  // Sync ref after initial render and whenever currentUser.id changes
   useEffect(() => {
     currentUserRef.current = currentUser.id;
-  }, []);
+  }, [currentUser.id]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
   const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
@@ -400,7 +400,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
       const nextProjects = (liveProjects && liveProjects.length > 0) ? liveProjects : [created, ...projects];
       setProjects(nextProjects);
       try {
-        localStorage.setItem('sb_projects', JSON.stringify(nextProjects));
+        localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(nextProjects));
       } catch {}
 
       showNotification('Project Created', `"${data.title}" is now open for teammate applications!`);
@@ -427,7 +427,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
       setCurrentUser(saved);
       setStudents(prev => prev.map(s => s.id === saved.id ? { ...s, ...saved } : s));
       try {
-        localStorage.setItem('sb_current_user', JSON.stringify(saved));
+        localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(saved));
       } catch {}
       showNotification('Profile Updated', 'Your profile details and skills have been saved.');
       return { success: true };
@@ -451,14 +451,14 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
       if (freshProfile) {
         setCurrentUser(freshProfile);
         try {
-          localStorage.setItem('sb_current_user', JSON.stringify(freshProfile));
+          localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(freshProfile));
         } catch {}
         setStudents(prev => prev.map(s => s.id === freshProfile.id ? freshProfile : s));
       } else if (newAvatarUrl) {
         setCurrentUser(prev => {
           const updated = { ...prev, avatar: newAvatarUrl };
           try {
-            localStorage.setItem('sb_current_user', JSON.stringify(updated));
+            localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(updated));
           } catch {}
           return updated;
         });
@@ -509,9 +509,9 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     };
 
     const nextApps = [newApp, ...applications];
-    setApplications(nextApps);
+setApplications(nextApps);
     try {
-      localStorage.setItem('sb_applications', JSON.stringify(nextApps));
+      localStorage.setItem(STORAGE_KEYS.applications, JSON.stringify(nextApps));
     } catch {}
 
     // Async sync with live backend
@@ -583,7 +583,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     }));
 
     try {
-      localStorage.setItem('sb_applications', JSON.stringify(nextApps));
+      localStorage.setItem(STORAGE_KEYS.applications, JSON.stringify(nextApps));
     } catch {}
     showNotification('Application Accepted', `${targetApp.applicantName} has joined the team for "${targetApp.projectTitle}".`);
   };
@@ -606,7 +606,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     );
     setApplications(nextApps);
     try {
-      localStorage.setItem('sb_applications', JSON.stringify(nextApps));
+      localStorage.setItem(STORAGE_KEYS.applications, JSON.stringify(nextApps));
     } catch {}
     showNotification('Application Declined', `Application from ${targetApp.applicantName} was declined.`, 'info');
   };
@@ -635,7 +635,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     const nextInvs = [newInv, ...invitations];
     setInvitations(nextInvs);
     try {
-      localStorage.setItem('sb_invitations', JSON.stringify(nextInvs));
+      localStorage.setItem(STORAGE_KEYS.invitations, JSON.stringify(nextInvs));
     } catch {}
 
     // Async sync with live backend
@@ -683,7 +683,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     }));
 
     try {
-      localStorage.setItem('sb_invitations', JSON.stringify(nextInvs));
+      localStorage.setItem(STORAGE_KEYS.invitations, JSON.stringify(nextInvs));
     } catch {}
     showNotification('Invitation Accepted', `You have joined the team for "${inv.projectTitle}"!`);
   };
@@ -701,7 +701,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     );
     setInvitations(nextInvs);
     try {
-      localStorage.setItem('sb_invitations', JSON.stringify(nextInvs));
+      localStorage.setItem(STORAGE_KEYS.invitations, JSON.stringify(nextInvs));
     } catch {}
     showNotification('Invitation Declined', 'You have declined the team invitation.', 'info');
   };
