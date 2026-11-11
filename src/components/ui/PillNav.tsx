@@ -934,6 +934,7 @@ export const PillNav = ({
           ref={toggleRef}
           type="button"
           className={[TOGGLE, joined ? TOGGLE_BARE : SURFACE].join(' ')}
+          style={!logo ? { marginLeft: 'auto' } : undefined}
           aria-expanded={open}
           aria-controls={panelId}
           aria-label={open ? 'Close menu' : 'Open menu'}

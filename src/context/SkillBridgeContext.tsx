@@ -6,6 +6,8 @@ import { Student, Project, Application, Invitation } from '@/types';
 import { MOCK_STUDENTS, MOCK_PROJECTS, MOCK_APPLICATIONS, MOCK_INVITATIONS, CURRENT_USER_ID } from '@/data/mockData';
 import { calculateMatchScore } from '@/lib/matching';
 import {
+  ApiError,
+  setAuthToken,
   authApi,
   studentsApi,
   projectsApi,
@@ -21,6 +23,23 @@ const STORAGE_KEYS = {
   applications: 'sb_applications',
   invitations: 'sb_invitations',
 };
+
+function clearStoredSession() {
+  try {
+    setAuthToken(null);
+    localStorage.setItem(STORAGE_KEYS.auth, 'false');
+    localStorage.removeItem(STORAGE_KEYS.currentUser);
+    localStorage.removeItem(STORAGE_KEYS.applications);
+    localStorage.removeItem(STORAGE_KEYS.invitations);
+  } catch {}
+}
+
+function mergeApplications(mine: Application[] | null, received: Application[] | null): Application[] {
+  const byId = new Map<string, Application>();
+  for (const app of mine || []) byId.set(app.id, app);
+  for (const app of received || []) byId.set(app.id, app);
+  return Array.from(byId.values());
+}
 
 interface ToastNotification {
   id: string;
@@ -89,22 +108,52 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
   const [invitations, setInvitations] = useState<Invitation[]>(MOCK_INVITATIONS);
   const [notifications, setNotifications] = useState<ToastNotification[]>([]);
 
-  // Load initial data from backend with local fallback
+  const applyAuthenticatedState = (params: {
+    myProfile: Student;
+    liveProjects: Project[] | null;
+    liveStudents: Student[] | null;
+    myApps: Application[] | null;
+    receivedApps: Application[] | null;
+    myInvs: Invitation[] | null;
+  }) => {
+    const { myProfile, liveProjects, liveStudents, myApps, receivedApps, myInvs } = params;
+    const nextApps = mergeApplications(myApps, receivedApps);
+    const nextInvs = Array.isArray(myInvs) ? myInvs : [];
+
+    setCurrentUser(myProfile);
+    setIsAuthenticated(true);
+    if (Array.isArray(liveProjects)) {
+      setProjects(liveProjects);
+      try {
+        localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(liveProjects));
+      } catch {}
+    }
+    if (Array.isArray(liveStudents) && liveStudents.length > 0) {
+      setStudents(liveStudents);
+    }
+    setApplications(nextApps);
+    setInvitations(nextInvs);
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(myProfile));
+      localStorage.setItem(STORAGE_KEYS.auth, 'true');
+      localStorage.setItem(STORAGE_KEYS.applications, JSON.stringify(nextApps));
+      localStorage.setItem(STORAGE_KEYS.invitations, JSON.stringify(nextInvs));
+    } catch {}
+  };
+
+  // Load initial data from backend with safe local fallback
   useEffect(() => {
     async function initData() {
       // Phase 1: Read from localStorage first for instant render
-      let isAuthValid = false;
+      let hasStoredAuth = false;
       let storedUser: Student | null = null;
+      let token: string | null = null;
 
       try {
-        const token = localStorage.getItem(STORAGE_KEYS.token);
+        token = localStorage.getItem(STORAGE_KEYS.token);
         const savedAuth = localStorage.getItem(STORAGE_KEYS.auth);
-        if (token && savedAuth === 'true') {
-          isAuthValid = true;
-        } else if (token && savedAuth !== 'false') {
-          // Token exists but auth flag unclear — try to validate
-          isAuthValid = false;
-        }
+        hasStoredAuth = Boolean(token && savedAuth !== 'false');
 
         const savedUser = localStorage.getItem(STORAGE_KEYS.currentUser);
         if (savedUser) {
@@ -113,8 +162,10 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
           } catch {}
         }
 
-        setIsAuthenticated(isAuthValid);
-        if (storedUser) setCurrentUser(storedUser);
+        if (hasStoredAuth && storedUser) {
+          setIsAuthenticated(true);
+          setCurrentUser(storedUser);
+        }
 
         const savedProjects = localStorage.getItem(STORAGE_KEYS.projects);
         if (savedProjects) {
@@ -125,10 +176,20 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
         }
 
         const savedApps = localStorage.getItem(STORAGE_KEYS.applications);
-        if (savedApps) setApplications(JSON.parse(savedApps));
+        if (savedApps) {
+          try {
+            const parsed = JSON.parse(savedApps);
+            if (Array.isArray(parsed)) setApplications(parsed);
+          } catch {}
+        }
 
         const savedInvs = localStorage.getItem(STORAGE_KEYS.invitations);
-        if (savedInvs) setInvitations(JSON.parse(savedInvs));
+        if (savedInvs) {
+          try {
+            const parsed = JSON.parse(savedInvs);
+            if (Array.isArray(parsed)) setInvitations(parsed);
+          } catch {}
+        }
       } catch {
         // LocalStorage access fallback
       }
@@ -140,61 +201,59 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
           studentsApi.list().catch(() => null),
         ]);
 
-        // Update projects from backend only if we don't have local data
-        // (preserve local changes like newly created projects)
-        if (liveProjects && liveProjects.length > 0 && !students.some(s => true)) {
+        if (Array.isArray(liveProjects)) {
           setProjects(liveProjects);
+          try {
+            localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(liveProjects));
+          } catch {}
         }
 
-        // Update students list from backend
-        if (liveStudents && liveStudents.length > 0) {
+        if (Array.isArray(liveStudents) && liveStudents.length > 0) {
           setStudents(liveStudents);
         }
 
-        // If we have a valid token and stored user, fetch and sync profile
-        // but preserve localStorage data unless backend has updates
-        const token = localStorage.getItem(STORAGE_KEYS.token);
-        if (token && isAuthValid && storedUser) {
+        if (token && hasStoredAuth) {
           try {
-            const myProfile = await studentsApi.getMyProfile();
+            const [myProfile, myApps, receivedApps, myInvs] = await Promise.all([
+              studentsApi.getMyProfile(),
+              applicationsApi.getMyApplications().catch(() => null),
+              applicationsApi.getReceivedApplications().catch(() => null),
+              invitationsApi.getMyInvitations().catch(() => null),
+            ]);
+
+            const nextApps = mergeApplications(myApps, receivedApps);
+            const nextInvs = Array.isArray(myInvs) ? myInvs : [];
+
             setCurrentUser(myProfile);
-            // Sync to localStorage only if profile fetched successfully
+            setIsAuthenticated(true);
+            setApplications(nextApps);
+            setInvitations(nextInvs);
+
             try {
               localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(myProfile));
               localStorage.setItem(STORAGE_KEYS.auth, 'true');
+              localStorage.setItem(STORAGE_KEYS.applications, JSON.stringify(nextApps));
+              localStorage.setItem(STORAGE_KEYS.invitations, JSON.stringify(nextInvs));
             } catch {}
-            setIsAuthenticated(true);
           } catch (profileErr: any) {
-            // Profile fetch failed — token may be expired
-            // But we still have valid localStorage user data, so keep it
-            if (!storedUser) {
-              // No localStorage user either — clear stale session
-              localStorage.removeItem(STORAGE_KEYS.token);
-              localStorage.removeItem(STORAGE_KEYS.currentUser);
-              localStorage.setItem(STORAGE_KEYS.auth, 'false');
+            const isAuthRejection =
+              profileErr instanceof ApiError &&
+              (profileErr.status === 401 || profileErr.status === 403 || profileErr.status === 404);
+
+            if (isAuthRejection || !storedUser) {
+              // Explicitly clear stale/invalid credentials — never keep unverified auth state after 401
+              clearStoredSession();
+              setCurrentUser(MOCK_STUDENTS[0]);
+              setApplications([]);
+              setInvitations([]);
               setIsAuthenticated(false);
             } else {
-              // We have localStorage user, keep it authenticated
+              // Transient network outage with locally cached profile
               setIsAuthenticated(true);
             }
           }
-        } else if (token && isAuthValid && !storedUser) {
-          // Token exists but no stored user — try to fetch profile
-          // and establish localStorage cache
-          try {
-            const myProfile = await studentsApi.getMyProfile();
-            setCurrentUser(myProfile);
-            try {
-              localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(myProfile));
-              localStorage.setItem(STORAGE_KEYS.auth, 'true');
-            } catch {}
-            setIsAuthenticated(true);
-          } catch {
-            // Failed to fetch profile — clear stale token
-            localStorage.removeItem(STORAGE_KEYS.token);
-            localStorage.setItem(STORAGE_KEYS.auth, 'false');
-            setIsAuthenticated(false);
-          }
+        } else {
+          setIsAuthenticated(false);
         }
       } catch {
         // Backend offline or unreachable — continues with cached data
@@ -223,37 +282,42 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  const login = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
-    const cleanEmail = email.trim();
+  const syncAuthenticatedSession = async (): Promise<Student> => {
     try {
-      await authApi.login(cleanEmail, pass);
-
-      // Fetch fresh authenticated profile and latest server data in parallel
-      const [myProfile, liveProjects, liveStudents, myApps, myInvs] = await Promise.all([
+      const [myProfile, liveProjects, liveStudents, myApps, receivedApps, myInvs] = await Promise.all([
         studentsApi.getMyProfile(),
         projectsApi.list().catch(() => null),
         studentsApi.list().catch(() => null),
         applicationsApi.getMyApplications().catch(() => null),
+        applicationsApi.getReceivedApplications().catch(() => null),
         invitationsApi.getMyInvitations().catch(() => null),
       ]);
 
-      setCurrentUser(myProfile);
-      setIsAuthenticated(true);
-      if (liveProjects && liveProjects.length > 0) {
-        setProjects(liveProjects);
-        try {
-          localStorage.setItem('sb_projects', JSON.stringify(liveProjects));
-        } catch {}
-      }
-      if (liveStudents && liveStudents.length > 0) setStudents(liveStudents);
-      if (myApps && myApps.length > 0) setApplications(myApps);
-      if (myInvs && myInvs.length > 0) setInvitations(myInvs);
+      applyAuthenticatedState({
+        myProfile,
+        liveProjects,
+        liveStudents,
+        myApps,
+        receivedApps,
+        myInvs,
+      });
 
-      try {
-        localStorage.setItem('sb_current_user', JSON.stringify(myProfile));
-        localStorage.setItem('sb_auth', 'true');
-      } catch {}
+      return myProfile;
+    } catch (err) {
+      clearStoredSession();
+      setCurrentUser(MOCK_STUDENTS[0]);
+      setApplications([]);
+      setInvitations([]);
+      setIsAuthenticated(false);
+      throw err;
+    }
+  };
 
+  const login = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    try {
+      await authApi.login(cleanEmail, pass);
+      const myProfile = await syncAuthenticatedSession();
       showNotification('Welcome back!', `Signed in as ${myProfile.name}`);
       return { success: true };
     } catch (err: any) {
@@ -264,7 +328,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
 
   const resetPassword = async (email: string, newPass: string): Promise<{ success: boolean; message?: string; error?: string }> => {
     try {
-      const res = await authApi.resetPassword(email.trim(), newPass);
+      const res = await authApi.resetPassword(email.trim().toLowerCase(), newPass);
       showNotification('Password Reset', res.message || 'Password updated successfully. You can now sign in.');
       return { success: true, message: res.message };
     } catch (err: any) {
@@ -275,40 +339,20 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
   const signup = async (data: { name: string; email: string; password: string; department: string; semester: number; college?: string }): Promise<{ success: boolean; error?: string }> => {
     try {
       await authApi.signup({
-        name: data.name,
-        email: data.email,
+        name: data.name.trim(),
+        email: data.email.trim().toLowerCase(),
         password: data.password,
-        department: data.department,
+        department: data.department.trim(),
         semester: Number(data.semester),
         college: data.college,
       });
 
-      const [myProfile, liveProjects, liveStudents] = await Promise.all([
-        studentsApi.getMyProfile(),
-        projectsApi.list().catch(() => null),
-        studentsApi.list().catch(() => null),
-      ]);
-
-      setCurrentUser(myProfile);
-      setIsAuthenticated(true);
-      if (liveProjects && liveProjects.length > 0) {
-        setProjects(liveProjects);
-        try {
-          localStorage.setItem('sb_projects', JSON.stringify(liveProjects));
-        } catch {}
-      }
-      if (liveStudents && liveStudents.length > 0) setStudents(liveStudents);
-
-      try {
-        localStorage.setItem('sb_current_user', JSON.stringify(myProfile));
-        localStorage.setItem('sb_auth', 'true');
-      } catch {}
-
-      showNotification('Account Created', `Welcome to SkillBridge, ${data.name}!`);
+      const myProfile = await syncAuthenticatedSession();
+      showNotification('Account Created', `Welcome to SkillBridge, ${myProfile.name}!`);
       return { success: true };
     } catch (err: any) {
       showNotification('Signup Failed', err.message || 'Registration failed.', 'error');
-      return { success: false, error: err.message };
+      return { success: false, error: err.message || 'Registration failed.' };
     }
   };
 
@@ -369,12 +413,11 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
 
   const logout = () => {
     authApi.logout().catch(() => {});
+    clearStoredSession();
     setIsAuthenticated(false);
-    try {
-      localStorage.removeItem('sb_token');
-      localStorage.setItem('sb_auth', 'false');
-      localStorage.removeItem('sb_current_user');
-    } catch {}
+    setCurrentUser(MOCK_STUDENTS[0]);
+    setApplications([]);
+    setInvitations([]);
     showNotification('Signed Out', 'You have been signed out of your session.', 'info');
   };
 

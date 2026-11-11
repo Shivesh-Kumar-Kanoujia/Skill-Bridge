@@ -22,6 +22,22 @@ CREATE TABLE users (
 );
 GO
 
+IF COL_LENGTH('users', 'email_normalized') IS NULL
+BEGIN
+    ALTER TABLE users
+    ADD email_normalized AS LOWER(LTRIM(RTRIM(email))) PERSISTED;
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'uq_users_email_normalized' AND object_id = OBJECT_ID('users')
+)
+BEGIN
+    CREATE UNIQUE INDEX uq_users_email_normalized ON users (email_normalized);
+END
+GO
+
 -- ── 2. STUDENT_PROFILES — public profile data (1:1 with users) ──
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'student_profiles')
 CREATE TABLE student_profiles (

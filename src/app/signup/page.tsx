@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useSkillBridge } from '@/context/SkillBridgeContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 import { Eye, EyeOff, Lock, Mail, User, ArrowRight, GraduationCap } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -61,17 +62,17 @@ export default function SignupPage() {
 
     setIsLoading(true);
     const result = await signup({
-      name: formData.name,
-      email: formData.email,
+      name: formData.name.trim(),
+      email: formData.email.trim().toLowerCase(),
       password: formData.password,
-      department: formData.department,
+      department: formData.department.trim(),
       semester: Number(formData.semester),
       college: formData.college,
     });
     setIsLoading(false);
 
     if (result.success) {
-      router.push('/dashboard');
+      router.replace('/dashboard');
     } else {
       setError(result.error || 'Registration failed. Please check your details.');
     }
@@ -87,10 +88,8 @@ export default function SignupPage() {
       >
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-9 h-9 rounded-xl bg-[#31594B] text-white flex items-center justify-center shadow-xs">
-              <span className="font-serif font-bold text-lg">S</span>
-            </div>
+          <Link href="/" className="inline-flex items-center gap-3 mb-4">
+            <BrandLogo size="lg" eager />
             <span className="font-serif font-bold text-xl text-[#31594B]">SkillBridge</span>
           </Link>
           <h1 className="text-2xl font-serif font-bold text-[#292F2B]">

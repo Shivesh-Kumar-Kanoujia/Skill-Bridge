@@ -34,6 +34,13 @@ logger = logging.getLogger("skillbridge")
 async def lifespan(app: FastAPI):
     logger.info("Starting SkillBridge API (env=%s)", settings.APP_ENV)
     logger.info("Database: %s", "SQLite (dev)" if settings.is_sqlite else "Production DB")
+    if settings.APP_ENV == "production" and settings.is_sqlite:
+        logger.warning(
+            "CRITICAL: Running in production with local SQLite (%s). "
+            "On ephemeral hosts like Render Web Services, container restarts/redeploys wipe local SQLite files and lose user accounts. "
+            "Set DATABASE_URL to a persistent PostgreSQL or Azure SQL connection string.",
+            settings.DATABASE_URL,
+        )
     logger.info("CORS origins: %s", settings.CORS_ORIGINS)
     await create_tables()
     logger.info("Database tables created/verified.")

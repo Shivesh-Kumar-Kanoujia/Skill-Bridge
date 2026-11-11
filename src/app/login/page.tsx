@@ -7,6 +7,7 @@ import { useSkillBridge } from '@/context/SkillBridgeContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Dialog } from '@/components/ui/Dialog';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 import { Eye, EyeOff, Lock, Mail, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -47,11 +48,11 @@ export default function LoginPage() {
     }
 
     setIsLoading(true);
-    const result = await login(email.trim(), password);
+    const result = await login(email.trim().toLowerCase(), password);
     setIsLoading(false);
 
     if (result.success) {
-      window.location.href = '/dashboard';
+      router.replace('/dashboard');
     } else {
       setError(result.error || 'Authentication failed. Please verify credentials.');
     }
@@ -98,10 +99,8 @@ export default function LoginPage() {
       >
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-9 h-9 rounded-xl bg-[#31594B] text-white flex items-center justify-center shadow-xs">
-              <span className="font-serif font-bold text-lg">S</span>
-            </div>
+          <Link href="/" className="inline-flex items-center gap-3 mb-4">
+            <BrandLogo size="lg" eager />
             <span className="font-serif font-bold text-xl text-[#31594B]">SkillBridge</span>
           </Link>
           <h1 className="text-2xl font-serif font-bold text-[#292F2B]">

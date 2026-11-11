@@ -7,6 +7,7 @@ import { AppSidebar } from '@/components/layout/AppSidebar';
 import { ProjectCard } from '@/components/shared/ProjectCard';
 import { ApplyModal } from '@/components/shared/ApplyModal';
 import { CreateProjectModal } from '@/components/shared/CreateProjectModal';
+import { BrandLoader } from '@/components/shared/BrandLogo';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -35,14 +36,7 @@ export default function DashboardPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   if (!isAuthReady || !isAuthenticated) {
-    return (
-      <div className="flex-1 flex items-center justify-center py-24 bg-[#F4F1E8]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#31594B] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-[#68716B]">Checking session...</p>
-        </div>
-      </div>
-    );
+    return <BrandLoader message="Checking session..." />;
   }
 
   // Projects where current user is owner or team member

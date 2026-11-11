@@ -22,13 +22,28 @@ export function setAuthToken(token: string | null) {
   }
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
+interface RequestOptions extends RequestInit {
+  skipAuth?: boolean;
+}
+
+async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+  const { skipAuth = false, headers: optionHeaders, ...fetchOptions } = options;
   const url = `${API_BASE_URL}${endpoint}`;
-  const token = getAuthToken();
+  const token = skipAuth ? null : getAuthToken();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
+    ...(optionHeaders as Record<string, string>),
   };
 
   if (token) {
@@ -36,7 +51,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   const response = await fetch(url, {
-    ...options,
+    ...fetchOptions,
     headers,
   });
 
@@ -44,11 +59,17 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     let errorDetail = `Request failed with status ${response.status}`;
     try {
       const errorJson = await response.json();
-      errorDetail = errorJson.detail || errorDetail;
+      if (typeof errorJson?.detail === 'string') {
+        errorDetail = errorJson.detail;
+      } else if (Array.isArray(errorJson?.detail) && errorJson.detail.length > 0) {
+        errorDetail = errorJson.detail
+          .map((item: any) => item?.msg || JSON.stringify(item))
+          .join(' ');
+      }
     } catch {
       // Fallback to status text
     }
-    throw new Error(errorDetail);
+    throw new ApiError(errorDetail, response.status);
   }
 
   return response.json();
@@ -58,16 +79,17 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export const authApi = {
   async signup(data: { name: string; email: string; password: string; department: string; semester: number; college?: string }) {
     const payload = {
-      name: data.name,
-      email: data.email,
+      name: data.name.trim(),
+      email: data.email.trim().toLowerCase(),
       password: data.password,
-      department: data.department,
+      department: data.department.trim(),
       semester: Number(data.semester),
-      college: data.college || undefined,
+      college: data.college?.trim() || undefined,
     };
     const res = await request<{ access_token: string; user: { id: number; email: string; role: string } }>('/api/auth/signup', {
       method: 'POST',
       body: JSON.stringify(payload),
+      skipAuth: true,
     });
     setAuthToken(res.access_token);
     return res;
@@ -76,7 +98,8 @@ export const authApi = {
   async login(email: string, pass: string) {
     const res = await request<{ access_token: string; user: { id: number; email: string; role: string } }>('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password: pass }),
+      body: JSON.stringify({ email: email.trim().toLowerCase(), password: pass }),
+      skipAuth: true,
     });
     setAuthToken(res.access_token);
     return res;
@@ -97,7 +120,8 @@ export const authApi = {
   async resetPassword(email: string, newPassword: string) {
     return request<{ message: string }>('/api/auth/reset-password', {
       method: 'POST',
-      body: JSON.stringify({ email, new_password: newPassword }),
+      body: JSON.stringify({ email: email.trim().toLowerCase(), new_password: newPassword }),
+      skipAuth: true,
     });
   },
 };

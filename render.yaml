@@ -1,3 +1,7 @@
+databases:
+  - name: skillbridge-db
+    plan: free
+
 services:
   - type: web
     name: skillbridge-backend
@@ -13,7 +17,9 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        value: sqlite+aiosqlite:///./skillbridge.db
+        fromDatabase:
+          name: skillbridge-db
+          property: connectionString
       - key: CORS_ORIGINS
         value: '["http://localhost:3000","http://127.0.0.1:3000"]'
 

@@ -13,6 +13,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { getAvatarUrl } from '@/lib/utils';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -39,6 +40,22 @@ export function AppSidebar() {
 
   return (
     <aside className="w-64 shrink-0 hidden lg:flex flex-col gap-6 py-6 pr-6 border-r border-[#E3E2D9] min-h-[calc(100vh-4rem)]">
+      {/* Workspace Brand Lockup */}
+      <Link
+        href="/dashboard"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/75 border border-[#E3E2D9] hover:border-[#31594B]/40 transition-colors"
+      >
+        <BrandLogo size="sm" />
+        <div className="min-w-0">
+          <p className="font-serif font-bold text-sm text-[#31594B] leading-tight">
+            SkillBridge
+          </p>
+          <p className="text-[11px] text-[#68716B] truncate">
+            Student Workspace
+          </p>
+        </div>
+      </Link>
+
       {/* Student Mini Card */}
       <div className="p-4 rounded-xl clay-widget">
         <div className="flex items-center gap-3">

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 
 export function Footer() {
   return (
@@ -10,12 +11,10 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12">
           {/* Brand Info */}
           <div className="md:col-span-1 flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-md bg-[#31594B] text-white flex items-center justify-center shadow-xs">
-                <span className="font-serif font-bold text-sm">S</span>
-              </div>
+            <Link href="/" className="inline-flex items-center gap-2.5 w-fit">
+              <BrandLogo size="sm" />
               <span className="font-serif font-bold text-lg text-[#31594B]">SkillBridge</span>
-            </div>
+            </Link>
             <p className="text-xs text-[#68716B] leading-relaxed">
               Find the right people. Build better projects. A structured, skill-first collaboration platform designed for university students, hackathons, and capstones.
             </p>

@@ -19,12 +19,21 @@ class SignupRequest(BaseModel):
     semester: int = Field(..., ge=1, le=10)
     college: Optional[str] = Field(None, max_length=200)
 
+    @field_validator("name", "department")
+    @classmethod
+    def strip_text_fields(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 2:
+            raise ValueError("Must be at least 2 characters.")
+        return cleaned
+
     @field_validator("email")
     @classmethod
     def validate_email(cls, v: str) -> str:
-        if "@" not in v:
+        cleaned = v.strip().lower()
+        if "@" not in cleaned or cleaned.startswith("@") or cleaned.endswith("@"):
             raise ValueError("Please enter a valid email address.")
-        return v.lower().strip()
+        return cleaned
 
 
 class LoginRequest(BaseModel):

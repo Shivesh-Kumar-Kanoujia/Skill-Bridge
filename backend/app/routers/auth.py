@@ -31,39 +31,57 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger("skillbridge.auth")
 
 
+from sqlalchemy.exc import IntegrityError
+
+
+def _normalize_email(email: str) -> str:
+    return email.strip().lower()
+
+
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     """Register a new student account."""
-    clean_email = body.email.strip().lower()
-    # Check duplicate email
-    existing = await db.execute(select(User).where(func.lower(User.email) == clean_email))
-    if existing.scalar_one_or_none():
+    clean_email = _normalize_email(body.email)
+    # Check duplicate email case-insensitively without crashing on legacy duplicates
+    existing = await db.execute(
+        select(User)
+        .where(func.lower(func.trim(User.email)) == clean_email)
+        .order_by(User.id.asc())
+    )
+    if existing.scalars().first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists.",
+            detail="An account with this email already exists. Please sign in.",
         )
 
-    # Create user
+    # Create user + profile atomically; DB unique index catches concurrent signups
     user = User(
         email=clean_email,
         password_hash=hash_password(body.password),
         role="student",
     )
-    db.add(user)
-    await db.flush()  # get user.id
+    try:
+        db.add(user)
+        await db.flush()  # get user.id
 
-    # Create student profile
-    profile = StudentProfile(
-        user_id=user.id,
-        name=body.name,
-        department=body.department,
-        semester=body.semester,
-        college=body.college.strip() if body.college and body.college.strip() else "Apex Institute of Technology",
-    )
-    db.add(profile)
-    await log_action(db, user_id=user.id, action="SIGNUP", entity_type="user", entity_id=user.id, details=f"User signed up: {user.email}")
-    await db.commit()
-    await db.refresh(user)
+        profile = StudentProfile(
+            user_id=user.id,
+            name=body.name.strip(),
+            department=body.department.strip(),
+            semester=body.semester,
+            college=body.college.strip() if body.college and body.college.strip() else "Apex Institute of Technology",
+        )
+        db.add(profile)
+        await log_action(db, user_id=user.id, action="SIGNUP", entity_type="user", entity_id=user.id, details=f"User signed up: {user.email}")
+        await db.commit()
+        await db.refresh(user)
+    except IntegrityError:
+        await db.rollback()
+        logger.warning("Duplicate signup blocked by DB constraint for email=%s", clean_email)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists. Please sign in.",
+        )
 
     logger.info("New signup: user_id=%d email=%s", user.id, user.email)
 
@@ -77,16 +95,22 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     """Authenticate with email and password."""
-    clean_email = body.email.strip().lower()
-    result = await db.execute(select(User).where(func.lower(User.email) == clean_email))
-    user = result.scalar_one_or_none()
+    clean_email = _normalize_email(body.email)
+    result = await db.execute(
+        select(User)
+        .where(func.lower(func.trim(User.email)) == clean_email)
+        .order_by(User.id.asc())
+    )
+    matches = result.scalars().all()
+    if len(matches) > 1:
+        logger.warning(
+            "Multiple user records match normalized email=%s; using earliest id=%d",
+            clean_email,
+            matches[0].id,
+        )
+    user = matches[0] if matches else None
 
-    is_valid = verify_password(body.password, user.password_hash) if user else False
-    if not is_valid and user and body.password in ("SkillBridge2026!", "password123"):
-        if verify_password("password123", user.password_hash) or verify_password("SkillBridge2026!", user.password_hash):
-            is_valid = True
-            user.password_hash = hash_password(body.password)
-            await db.commit()
+    is_valid = verify_password(body.password, user.password_hash) if (user and user.password_hash) else False
 
     if not user or not is_valid:
         raise HTTPException(
@@ -114,9 +138,13 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 @router.post("/reset-password", response_model=MessageResponse)
 async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
     """Reset password for a registered user."""
-    clean_email = body.email.strip().lower()
-    result = await db.execute(select(User).where(func.lower(User.email) == clean_email))
-    user = result.scalar_one_or_none()
+    clean_email = _normalize_email(body.email)
+    result = await db.execute(
+        select(User)
+        .where(func.lower(func.trim(User.email)) == clean_email)
+        .order_by(User.id.asc())
+    )
+    user = result.scalars().first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

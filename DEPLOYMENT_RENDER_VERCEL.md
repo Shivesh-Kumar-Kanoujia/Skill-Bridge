@@ -49,14 +49,14 @@ Scroll down to the **Environment Variables** section and add:
 | Key | Value | Notes |
 | :--- | :--- | :--- |
 | `APP_ENV` | `production` | Enables production mode |
-| `SECRET_KEY` | *(Generate a 32+ character random string)* | E.g. run `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `SECRET_KEY` | *(Generate a 32+ character random string)* | E.g. run `python -c "import secrets; print(secrets.token_hex(32))"` (keep stable across deploys!) |
 | `ALGORITHM` | `HS256` | JWT algorithm |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | 24-hour token validity |
-| `DATABASE_URL` | `sqlite+aiosqlite:///./skillbridge.db` | Auto-creates and auto-seeds SQLite on startup |
+| `DATABASE_URL` | *(Internal/External PostgreSQL URL from Render Postgres / Neon)* | **Do NOT use local SQLite (`./skillbridge.db`) on Render** — Render's container filesystem resets on sleep/redeploy, wiping accounts |
 | `CORS_ORIGINS` | `["http://localhost:3000"]` | Backend automatically allows all `*.vercel.app` domains |
 
-> **Note on Database:**  
-> When the service starts for the first time, SkillBridge automatically runs tables creation and seeds canonical skills, demo accounts, and projects.
+> **Important Note on Database Persistence:**  
+> Render Web Services use an ephemeral filesystem. Always provision a persistent PostgreSQL database (e.g. Render Postgres via `render.yaml` or Neon/Supabase) and set `DATABASE_URL` to its connection string (`postgresql://...` is automatically converted to `postgresql+asyncpg://...`). When the service starts for the first time against a fresh database, SkillBridge automatically creates tables and seeds canonical skills, demo accounts, and projects.
 
 ### Step 4: Deploy and Copy Backend URL
 1. Click **"Deploy Web Service"**.

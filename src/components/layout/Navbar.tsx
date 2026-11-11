@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useSkillBridge } from '@/context/SkillBridgeContext';
 import { Button } from '@/components/ui/Button';
 import { PillNav, PillNavItem } from '@/components/ui/PillNav';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 import { getAvatarUrl } from '@/lib/utils';
 import { 
   Compass, 
@@ -120,18 +121,20 @@ export function Navbar() {
     <header className="sticky top-0 z-40 bg-[#F4F1E8]/95 backdrop-blur-md border-b border-[#E3E2D9]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 relative">
+          {/* Official Brand Logo */}
+          <Link
+            href="/"
+            aria-label="SkillBridge Home"
+            className="flex items-center gap-2.5 shrink-0 mr-2 sm:mr-3 rounded-xl focus-visible:outline-2 focus-visible:outline-[#31594B]"
+          >
+            <BrandLogo size="navbar" eager />
+            <span className="hidden sm:inline font-serif font-bold text-lg tracking-tight text-[#31594B]">
+              SkillBridge
+            </span>
+          </Link>
+
           {/* Main PillNav Navigation */}
           <PillNav
-            logo={
-              <div 
-                className="w-[22px] h-[22px] rounded-[6px] bg-[#31594B] text-white flex items-center justify-center shadow-2xs font-serif font-bold text-xs select-none"
-                title="SkillBridge"
-              >
-                S
-              </div>
-            }
-            logoHref="/"
-            logoAlt="SkillBridge Home"
             items={navItems}
             activeHref={pathname}
             linkComponent={Link}

@@ -5,6 +5,7 @@ import { SkillBridgeProvider } from "@/context/SkillBridgeContext";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ToastContainer } from "@/components/ui/ToastContainer";
+import { BrandLoader } from "@/components/shared/BrandLogo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,6 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  applicationName: "SkillBridge",
   title: "SkillBridge — Student Collaboration Platform",
   description: "Discover project opportunities, showcase your technical skills, and find the right teammates for college hackathons, capstones, and competitions.",
 };
@@ -39,7 +41,7 @@ export default function RootLayout({
             <Navbar />
           </Suspense>
           <main className="flex-1 flex flex-col">
-            <Suspense fallback={<div className="p-8 text-center text-xs text-[#68716B]">Loading...</div>}>
+            <Suspense fallback={<BrandLoader message="Loading SkillBridge..." />}>
               {children}
             </Suspense>
           </main>

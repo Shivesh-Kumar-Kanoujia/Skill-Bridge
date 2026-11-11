@@ -391,13 +391,20 @@ async def seed_database(db: AsyncSession) -> dict:
         skill_map[name.lower()] = skill
 
     # 2. Users & Profiles
+    from sqlalchemy import func
+
     user_map: dict[str, User] = {}
     for s_data in STUDENTS_DATA:
-        result = await db.execute(select(User).where(User.email == s_data["email"]))
-        user = result.scalar_one_or_none()
+        clean_email = s_data["email"].strip().lower()
+        result = await db.execute(
+            select(User)
+            .where(func.lower(func.trim(User.email)) == clean_email)
+            .order_by(User.id.asc())
+        )
+        user = result.scalars().first()
         if not user:
             user = User(
-                email=s_data["email"],
+                email=clean_email,
                 password_hash=hash_password(DEFAULT_PASSWORD),
                 role="student",
             )
