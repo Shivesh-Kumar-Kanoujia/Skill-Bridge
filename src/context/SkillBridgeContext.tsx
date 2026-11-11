@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Student, Project, Application, Invitation } from '@/types';
 import { MOCK_STUDENTS, MOCK_PROJECTS, MOCK_APPLICATIONS, MOCK_INVITATIONS, CURRENT_USER_ID } from '@/data/mockData';
@@ -12,6 +12,15 @@ import {
   applicationsApi,
   invitationsApi,
 } from '@/lib/api';
+
+const STORAGE_KEYS = {
+  token: 'sb_token',
+  auth: 'sb_auth',
+  currentUser: 'sb_current_user',
+  projects: 'sb_projects',
+  applications: 'sb_applications',
+  invitations: 'sb_invitations',
+};
 
 interface ToastNotification {
   id: string;
@@ -67,6 +76,11 @@ const SkillBridgeContext = createContext<SkillBridgeContextType | undefined>(und
 
 export function SkillBridgeProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<Student>(MOCK_STUDENTS[0]);
+  const currentUserRef = useRef<string | number>('0');
+  // Sync ref after initial render to avoid "Cannot access refs during render"
+  useEffect(() => {
+    currentUserRef.current = currentUser.id;
+  }, []);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
   const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
@@ -78,20 +92,31 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
   // Load initial data from backend with local fallback
   useEffect(() => {
     async function initData() {
-      // 1. Try local storage first for instant render
+      // Phase 1: Read from localStorage first for instant render
+      let isAuthValid = false;
+      let storedUser: Student | null = null;
+
       try {
-        const token = localStorage.getItem('sb_token');
-        const savedAuth = localStorage.getItem('sb_auth');
+        const token = localStorage.getItem(STORAGE_KEYS.token);
+        const savedAuth = localStorage.getItem(STORAGE_KEYS.auth);
         if (token && savedAuth === 'true') {
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
+          isAuthValid = true;
+        } else if (token && savedAuth !== 'false') {
+          // Token exists but auth flag unclear — try to validate
+          isAuthValid = false;
         }
 
-        const savedUser = localStorage.getItem('sb_current_user');
-        if (savedUser) setCurrentUser(JSON.parse(savedUser));
+        const savedUser = localStorage.getItem(STORAGE_KEYS.currentUser);
+        if (savedUser) {
+          try {
+            storedUser = JSON.parse(savedUser);
+          } catch {}
+        }
 
-        const savedProjects = localStorage.getItem('sb_projects');
+        setIsAuthenticated(isAuthValid);
+        if (storedUser) setCurrentUser(storedUser);
+
+        const savedProjects = localStorage.getItem(STORAGE_KEYS.projects);
         if (savedProjects) {
           try {
             const parsed = JSON.parse(savedProjects);
@@ -99,61 +124,86 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
           } catch {}
         }
 
-        const savedApps = localStorage.getItem('sb_applications');
+        const savedApps = localStorage.getItem(STORAGE_KEYS.applications);
         if (savedApps) setApplications(JSON.parse(savedApps));
 
-        const savedInvs = localStorage.getItem('sb_invitations');
+        const savedInvs = localStorage.getItem(STORAGE_KEYS.invitations);
         if (savedInvs) setInvitations(JSON.parse(savedInvs));
       } catch {
         // LocalStorage access fallback
-      } finally {
-        setIsAuthReady(true);
       }
 
-      // 2. Fetch authoritative live data from backend
+      // Phase 2: Fetch authoritative live data from backend
       try {
         const [liveProjects, liveStudents] = await Promise.all([
           projectsApi.list().catch(() => null),
           studentsApi.list().catch(() => null),
         ]);
-        if (liveProjects && liveProjects.length > 0) {
-          setProjects(liveProjects);
-          try {
-            localStorage.setItem('sb_projects', JSON.stringify(liveProjects));
-          } catch {}
-        }
-        if (liveStudents && liveStudents.length > 0) setStudents(liveStudents);
 
-        const token = localStorage.getItem('sb_token');
-        if (token) {
+        // Update projects from backend only if we don't have local data
+        // (preserve local changes like newly created projects)
+        if (liveProjects && liveProjects.length > 0 && !students.some(s => true)) {
+          setProjects(liveProjects);
+        }
+
+        // Update students list from backend
+        if (liveStudents && liveStudents.length > 0) {
+          setStudents(liveStudents);
+        }
+
+        // If we have a valid token and stored user, fetch and sync profile
+        // but preserve localStorage data unless backend has updates
+        const token = localStorage.getItem(STORAGE_KEYS.token);
+        if (token && isAuthValid && storedUser) {
           try {
             const myProfile = await studentsApi.getMyProfile();
             setCurrentUser(myProfile);
-            setIsAuthenticated(true);
+            // Sync to localStorage only if profile fetched successfully
             try {
-              localStorage.setItem('sb_current_user', JSON.stringify(myProfile));
-              localStorage.setItem('sb_auth', 'true');
+              localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(myProfile));
+              localStorage.setItem(STORAGE_KEYS.auth, 'true');
             } catch {}
-
-            const [myApps, myInvs] = await Promise.all([
-              applicationsApi.getMyApplications().catch(() => null),
-              invitationsApi.getMyInvitations().catch(() => null),
-            ]);
-            if (myApps && myApps.length > 0) setApplications(myApps);
-            if (myInvs && myInvs.length > 0) setInvitations(myInvs);
+            setIsAuthenticated(true);
           } catch (profileErr: any) {
-            // Token expired or invalid — clear stale session
-            if (profileErr?.message?.includes('401') || profileErr?.message?.includes('token')) {
-              localStorage.removeItem('sb_token');
-              localStorage.removeItem('sb_current_user');
-              localStorage.setItem('sb_auth', 'false');
+            // Profile fetch failed — token may be expired
+            // But we still have valid localStorage user data, so keep it
+            if (!storedUser) {
+              // No localStorage user either — clear stale session
+              localStorage.removeItem(STORAGE_KEYS.token);
+              localStorage.removeItem(STORAGE_KEYS.currentUser);
+              localStorage.setItem(STORAGE_KEYS.auth, 'false');
               setIsAuthenticated(false);
+            } else {
+              // We have localStorage user, keep it authenticated
+              setIsAuthenticated(true);
             }
+          }
+        } else if (token && isAuthValid && !storedUser) {
+          // Token exists but no stored user — try to fetch profile
+          // and establish localStorage cache
+          try {
+            const myProfile = await studentsApi.getMyProfile();
+            setCurrentUser(myProfile);
+            try {
+              localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(myProfile));
+              localStorage.setItem(STORAGE_KEYS.auth, 'true');
+            } catch {}
+            setIsAuthenticated(true);
+          } catch {
+            // Failed to fetch profile — clear stale token
+            localStorage.removeItem(STORAGE_KEYS.token);
+            localStorage.setItem(STORAGE_KEYS.auth, 'false');
+            setIsAuthenticated(false);
           }
         }
       } catch {
         // Backend offline or unreachable — continues with cached data
       }
+
+      // ONLY mark auth as ready AFTER both phases complete
+      // This prevents useProtectedRoute from redirecting
+      // when phase 2 later clears isAuthenticated on 401
+      setIsAuthReady(true);
     }
 
     initData();
@@ -369,7 +419,7 @@ export function SkillBridgeProvider({ children }: { children: React.ReactNode })
           } catch {}
           return updated;
         });
-        setStudents(prev => prev.map(s => s.id === currentUser.id ? { ...s, avatar: newAvatarUrl } : s));
+        setStudents(prev => prev.map(s => s.id === currentUserRef.current ? { ...s, avatar: newAvatarUrl } : s));
       }
 
       showNotification('Photo Updated', 'Your profile photo has been uploaded successfully.');
