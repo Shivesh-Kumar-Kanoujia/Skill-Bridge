@@ -1,0 +1,31 @@
+# Git and repository
+.git/
+.gitignore
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+.venv/
+venv/
+env/
+node_modules/
+.next/
+
+# Python and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+
+# Databases and local uploads
+*.db
+*.sqlite
+*.sqlite3
+backend/skillbridge.db
+backend/uploads/
+uploads/
+scratch/
+

@@ -32,6 +32,9 @@ class Settings(BaseSettings):
                 return v.replace("postgres://", "postgresql+asyncpg://", 1)
             elif v.startswith("postgresql://") and not v.startswith("postgresql+"):
                 return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+            elif v.startswith("mssql+pyodbc://"):
+                # Automatically map mssql+pyodbc to async aioodbc for create_async_engine
+                return v.replace("mssql+pyodbc://", "mssql+aioodbc://", 1)
             elif v in ("sqlite+aiosqlite:///./skillbridge.db", "sqlite:///./skillbridge.db", "./skillbridge.db"):
                 return f"sqlite+aiosqlite:///{DEFAULT_SQLITE_DB}"
         return v
